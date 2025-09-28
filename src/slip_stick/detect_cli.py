@@ -9,7 +9,7 @@ from __future__ import annotations
 import argparse
 import logging
 from pathlib import Path
-from typing import Iterable, Tuple
+from typing import Iterable
 
 import numpy as np
 
@@ -37,7 +37,7 @@ def main(argv: Iterable[str] | None = None) -> int:
         raise SystemExit(f"replicate not found or empty: {Rep}")
 
     y = frame["force_N"].to_numpy()
-    fs = float(meta["replicates"][Rep]["Fs"]) or 1.0 / float(np.median(np.diff(frame["time_s"])) )
+    fs = float(meta["replicates"][Rep]["Fs"]) or 1.0 / float(np.median(np.diff(frame["time_s"])))
 
     f1 = args.f1
     f2 = args.f2
@@ -105,7 +105,7 @@ def _select_replicate(meta: dict, rep_arg: str | None) -> str:
         # treat as id string
         if rep_arg in reps:
             return rep_arg
-        raise SystemExit(f"replicate not found: {rep_arg}")
+        raise SystemExit(f"replicate not found: {rep_arg}") from None
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -140,4 +140,3 @@ def _configure_logging(args: argparse.Namespace) -> None:
 
 if __name__ == "__main__":  # pragma: no cover
     raise SystemExit(main())
-

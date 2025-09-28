@@ -29,7 +29,6 @@ from __future__ import annotations
 import csv
 import logging
 import math
-import os
 import re
 import unicodedata
 from pathlib import Path
@@ -93,6 +92,7 @@ __all__ = ["load_ftm10_csv"]
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def load_ftm10_csv(
     path: str,
@@ -284,7 +284,7 @@ def _read_preview_lines(path: str, preview_lines: int) -> Tuple[List[str], str]:
         try:
             lines: List[str] = []
             with Path(path).open("r", encoding=encoding) as fh:
-                for _, line in zip(range(preview_lines), fh):
+                for _, line in zip(range(preview_lines), fh, strict=False):
                     lines.append(line.rstrip("\r\n"))
             return lines, encoding
         except UnicodeDecodeError as exc:  # pragma: no cover - depends on file
@@ -330,10 +330,7 @@ def _build_columns_from_header(
         raise ValueError("Expected three header rows (label, name, unit)")
 
     max_len = max(len(row) for row in header_rows)
-    padded_rows = [
-        list(row) + [""] * (max_len - len(row))
-        for row in header_rows[:3]
-    ]
+    padded_rows = [list(row) + [""] * (max_len - len(row)) for row in header_rows[:3]]
     replicate_row, name_row, unit_row = padded_rows
 
     replicate_series = pd.Series(replicate_row, dtype="object")
@@ -456,7 +453,7 @@ def _finalise_block(
 ) -> Dict[str, Any]:
     measurement_map: Dict[str, Dict[str, Any]] = {}
 
-    for column, absolute_idx in zip(columns, indices):
+    for column, absolute_idx in zip(columns, indices, strict=False):
         _, raw_name, raw_unit = column
         info = _classify_measurement(raw_name, raw_unit)
         if info is None:
@@ -580,12 +577,18 @@ def _build_long_frame(df: pd.DataFrame, blocks: List[Dict[str, Any]]) -> pd.Data
 
     for block in blocks:
         cols = block["columns"]
-        subset = df[[
-            cols["time"]["column_key"],
-            cols["force"]["column_key"],
-            cols["disp"]["column_key"],
-        ]].copy()
-        subset.columns = [CANONICAL_FIELDS["time"], CANONICAL_FIELDS["force"], CANONICAL_FIELDS["disp"]]
+        subset = df[
+            [
+                cols["time"]["column_key"],
+                cols["force"]["column_key"],
+                cols["disp"]["column_key"],
+            ]
+        ].copy()
+        subset.columns = [
+            CANONICAL_FIELDS["time"],
+            CANONICAL_FIELDS["force"],
+            CANONICAL_FIELDS["disp"],
+        ]
 
         block_metrics = block.setdefault("metrics", {})
         block_metrics["rows_initial"] = int(subset.shape[0])
@@ -597,7 +600,9 @@ def _build_long_frame(df: pd.DataFrame, blocks: List[Dict[str, Any]]) -> pd.Data
 
         subset.dropna(subset=[CANONICAL_FIELDS["time"]], inplace=True)
         block_metrics["rows_after_time_drop"] = int(subset.shape[0])
-        block_metrics["dropped_time_na"] = block_metrics["rows_initial"] - block_metrics["rows_after_time_drop"]
+        block_metrics["dropped_time_na"] = (
+            block_metrics["rows_initial"] - block_metrics["rows_after_time_drop"]
+        )
 
         diffs = subset[CANONICAL_FIELDS["time"]].diff()
         non_monotonic_mask = diffs < 0
@@ -608,7 +613,16 @@ def _build_long_frame(df: pd.DataFrame, blocks: List[Dict[str, Any]]) -> pd.Data
         block_metrics["dropped_non_monotonic"] = dropped_non_monotonic
 
         subset["replicate_id"] = block["replicate_id"]
-        frames.append(subset[["replicate_id", CANONICAL_FIELDS["time"], CANONICAL_FIELDS["force"], CANONICAL_FIELDS["disp"]]])
+        frames.append(
+            subset[
+                [
+                    "replicate_id",
+                    CANONICAL_FIELDS["time"],
+                    CANONICAL_FIELDS["force"],
+                    CANONICAL_FIELDS["disp"],
+                ]
+            ]
+        )
 
     if not frames:
         return pd.DataFrame(columns=["replicate_id", *CANONICAL_FIELDS.values()])
@@ -637,8 +651,14 @@ def _compute_stats(df_long: pd.DataFrame) -> Dict[str, Any]:
         dt = frame[CANONICAL_FIELDS["time"]].diff().dropna()
         dt_median = float(dt.median()) if not dt.empty else math.nan
         dt_std = float(dt.std(ddof=1)) if len(dt) > 1 else 0.0
-        sampling_rate = float(1.0 / dt_median) if dt_median and not math.isnan(dt_median) and dt_median != 0 else math.nan
-        n_nans = int(frame[[CANONICAL_FIELDS["force"], CANONICAL_FIELDS["disp"]]].isna().sum().sum())
+        sampling_rate = (
+            float(1.0 / dt_median)
+            if dt_median and not math.isnan(dt_median) and dt_median != 0
+            else math.nan
+        )
+        n_nans = int(
+            frame[[CANONICAL_FIELDS["force"], CANONICAL_FIELDS["disp"]]].isna().sum().sum()
+        )
 
         replicates[rep_id] = {
             "n_samples": row_count,

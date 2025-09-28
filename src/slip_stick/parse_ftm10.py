@@ -59,7 +59,10 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--out",
-        help="Base output path (without extension). Writes <path>.parquet and <path>.metadata.json.",
+        help=(
+            "Base output path (without extension). "
+            "Writes <path>.parquet and <path>.metadata.json."
+        ),
     )
     parser.add_argument(
         "--preview-lines",

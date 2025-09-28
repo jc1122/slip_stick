@@ -26,4 +26,3 @@ Expected structure (for 2 replicates):
 - Row 2: names per column: "Czas","Siła","Przemieszczenie", repeated per replicate.
 - Row 3: units per column: "sec","N","mm", repeated per replicate.
 - Rows 4+: numeric data with decimal commas.
-

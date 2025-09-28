@@ -23,10 +23,10 @@ Both are pure functions that operate on a single replicate array.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Dict, Optional, Sequence, Tuple
-
 import math
+from dataclasses import dataclass
+from typing import Dict, Optional, Tuple
+
 import numpy as np
 
 __all__ = ["estimate_midband_welch", "decompose_complementary"]
@@ -139,7 +139,7 @@ def _welch_psd(
         y = np.pad(y, (0, nperseg - n), mode="constant")
         n = len(y)
     win = np.hanning(nperseg)
-    scale = float(np.sum(win ** 2)) * fs
+    scale = float(np.sum(win**2)) * fs
     psd_accum = None
     count = 0
     for start in range(0, n - nperseg + 1, step):
@@ -242,4 +242,3 @@ def decompose_complementary(
     err = recon - y
     recon_rms = float(np.sqrt(np.mean(err * err)))
     return low, mid, high, recon_rms
-

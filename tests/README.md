@@ -24,4 +24,3 @@ Running tests (after implementation)
 ```bash
 pytest -q
 ```
-

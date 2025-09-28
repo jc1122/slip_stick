@@ -12,76 +12,69 @@ low‑frequency peel, mid‑frequency slip–stick, and high‑frequency instrum
   from the CSV files rather than relying on prior assumptions.
 
 ## Near‑term next steps
-- Derive a frequency‑aware filtering pipeline and onset detection criterion.
-- Validate assumptions on a small preview (≤100 lines) from the uploaded CSVs.
-- Outline CLI design, parameters, and outputs for the detection script.
+- Exercise the parser on both external and internal CSVs; capture edge cases and
+  promote anomalies into metadata or explicit errors.
+- Prototype the band‑limited filtering and onset detection workflow that consumes
+  the tidy parser output.
+- Document updated CLI workflows, fixtures, and testing cadence so future agents
+  can extend detection logic without re-deriving parser details.
 
-## Action plan — parsing phase
-- Parse CSV dialect and headers for all replicates.
-- Normalize names/units; extract all 3‑column replicate blocks.
-- Convert to numeric; build canonical long format with `replicate_id`.
-- Validate timebase (monotonic), compute dt stats and Fs per replicate.
-- CLI summary output and optional Parquet + JSON metadata export.
-- Add tests for each step; scaffold dev tooling (ruff, black, pre‑commit).
+## Recent accomplishments — parsing phase
+- Dialect sniffing, MultiIndex header reconstruction, and numeric coercion with
+  decimal-comma support are in place.
+- Long-format DataFrame construction with monotonicity checks and per-replicate
+  statistics (Fs, dt, NaN totals) is implemented.
+- CLI wiring delivers summary output, Parquet/JSON exports, logging controls, and
+  pytest coverage via fixtures sampled from the external dataset.
 
 ### Tasks (actionable)
-- Add Python scaffolding: `src/slip_stick/` and tests with pytest.
-- Implement `load_ftm10_csv(path)` returning `(df_long, metadata)`.
-- Build CLI `parse_ftm10.py` with `--input`, `--summary`, `--out`.
-- Handle decimal comma, quotes, 3‑row headers, and replicate detection.
-- Create small CSV fixtures (2–3 replicates) for unit tests.
-- Compute per‑replicate metrics: `dt_median`, `dt_std`, `Fs`, `n_samples`, `n_nans`.
-- Write Parquet and JSON metadata when `--out` is provided.
-- Add ruff + black configs in `pyproject.toml`; set sensible defaults.
-- Add `.pre-commit-config.yaml` and enable hooks; document commands.
+- Harden parser resilience: improve error messages for header mismatches, missing
+  replicates, or monotonicity drops; extend metadata to surface anomalies.
+- Cross-validate external vs internal CSV previews (≤100 lines) and record any
+  schema differences in `progress.md` plus metadata defaults.
+- Sketch the filtering/onset detection workflow (functions, CLI extension points,
+  testing strategy) using the new tidy outputs.
+- Document parser usage in README (flag table, sample summary) and align the Memory
+  Bank with the upcoming detection workstream.
 
-### Tests (initial)
-- `test_header_parsing()` detects 3‑row header and maps names/units.
-- `test_decimal_comma_parsing()` loads numeric values correctly.
-- `test_replicates_count()` finds all replicate blocks.
-- `test_timebase_stats()` verifies monotonic time and Fs ≈ 100 Hz (tolerance).
-- `test_long_format_shape()` checks columns and row counts.
-- `test_cli_summary()` runs `--summary` on fixture and checks key lines.
+## Detailed TODOs — parser hardening and detection
+1. Add robust error handling:
+   - Missing/extra columns in a block, inconsistent header rows, non-monotonic time, and quoting anomalies.
+   - Emit clear messages; continue best-effort where safe, or fail fast with guidance.
+2. Document defaults and overrides in README:
+   - Decimal handling, header rows, preview lines, and output paths.
+3. Run tooling on each iteration:
+   - `pre-commit run -a` and `pytest -q`; fix lint/format issues and failing tests.
+4. Encoding and BOM handling:
+   - Default to `encoding='utf-8'`; also try `utf-8-sig` to strip BOMs if present.
+   - Ensure Polish diacritics (e.g., "Siła") are parsed correctly; document fallback.
+5. Header cleaning and validation:
+   - Strip leading/trailing whitespace and quotes from header labels.
+   - Drop all-empty trailing columns; assert `column_count % 3 == 0` or error.
+   - Record any anomalies (e.g., missing units) in metadata.
+6. Replicate label normalization:
+   - Ensure `_normalize_replicate_label(label)` stays deterministic (`"1 _ 1" -> "rep1_1"`).
+   - Add a regression test covering tricky labels.
+7. Units validation and conversion:
+   - Accept synonyms (e.g., `sec`/`s`), and scale if needed (e.g., `kN`→`N`, `µm`→`mm`).
+   - Record conversions applied per replicate in metadata.
+8. CLI ergonomics and logging:
+   - `--quiet/--verbose` implemented; add richer status/error messaging and ensure non-zero exit codes on fatal failures.
+9. Output handling:
+   - Create parent directories for `--out` if missing.
+   - Optional flag `--partition-by-replicate` to write per-replicate Parquet files; otherwise keep the consolidated file.
+10. Additional tests:
+    - JSON metadata schema and required keys presence.
+    - `--out` writes both `.parquet` and `.metadata.json` with expected content.
+    - Cross-file consistency: parse both external and internal CSV heads and confirm consistent shapes and replicate detection.
+11. Timebase edge cases:
+    - Handle duplicate timestamps by dropping subsequent duplicates (record counts).
+    - Allow varying lengths per replicate; long format should naturally accommodate.
 
-### Dev tooling (to implement next)
-- Ruff: enable linting and `--fix`; default select `E,F,W,I` and `B` if using flake8‑bugbear.
-- Black: line length 100, target Python 3.10+.
-- Pre‑commit: ruff, black, end‑of‑file‑fixer, trailing‑whitespace, check‑yaml/toml/json.
-
-### Example commands
-```bash
-python -m venv .venv && source .venv/bin/activate
-python -m pip install -U pip
-# after coding model adds pyproject and extras
-pip install -e .[dev]
-pre-commit install
-pre-commit run -a
-pytest -q
-python -m slip_stick.parse_ftm10 --input t2en-crosil-42-external.csv --summary
-```
-
-### Pre‑commit config (to create)
-```yaml
-repos:
-  - repo: https://github.com/psf/black
-    rev: 24.8.0
-    hooks:
-      - id: black
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.6.2
-    hooks:
-      - id: ruff
-        args: ["--fix"]
-      - id: ruff-format
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
-    hooks:
-      - id: check-yaml
-      - id: check-toml
-      - id: check-json
-      - id: end-of-file-fixer
-      - id: trailing-whitespace
-```
+### Tests (current coverage)
+- Pytest suite exercises header parsing, decimal coercion, replicate grouping, timebase
+  stats, long-format shape, and CLI summary execution using
+  `tests/fixtures/ftm10_external_head.csv`.
 
 ## Recent changes
 - Established project goal: onset detection for slip–stick from FTM 10 data.

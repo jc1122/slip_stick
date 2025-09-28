@@ -17,20 +17,33 @@ the Memory Bank in `memory-bank/` to track decisions, constraints, and active wo
   process entire files.
 
 ## Current focus
-1. Parse all replicates from the raw CSVs into a canonical long format with
-   `replicate_id`, `time_s`, `force_N`, and `disp_mm` columns.
-2. Compute per replicate diagnostics (dt median, dt std, sampling rate, NaN counts,
-   sample totals) and provide summary output via CLI.
-3. Establish reversible decomposition methods (wavelet MRA by default, VMD optional)
-   that separate low frequency peel, mid frequency slip–stick, and high frequency
-   noise components without losing information (components must reconstruct the
-   original signal).
+1. Validate parsed replicates across external/internal datasets and capture edge
+   cases (missing columns, extra replicates) in metadata.
+2. Design the frequency-aware filtering and onset detection pipeline that rides on
+   the tidy `df_long` output (band-pass, envelope, hysteresis rules).
+3. Document CLI workflows and integrate the parser outputs into the planned
+   decomposition + detection notebooks.
 
-## Planned CLI and API
-- Module entrypoint: `python -m slip_stick.parse_ftm10 --input <file> --summary`.
-- Outputs: textual summary to stdout plus optional Parquet dataset and JSON metadata
-  (`--out parsed.parquet` stores both `.parquet` and `.json`).
-- Library API (planned): `load_ftm10_csv(path) -> (df_long, metadata)`.
+## Parser CLI and API
+- Module entrypoint: `python -m slip_stick.parse_ftm10 --input <file> [flags]`.
+- Flags:
+  - `--summary` prints replicate counts, sampling stats, and NaN totals.
+  - `--out PATH` writes `<PATH>.parquet` (tidy data) and `<PATH>.metadata.json`.
+  - `--preview-lines`, `--decimal-comma`, `--decimal-dot`, and `--header-rows`
+    allow manual overrides when sniffing unusual files.
+  - `--quiet`/`--verbose` adjust logging; `--version` reports the package version.
+- Library API: `load_ftm10_csv(path, preview_lines=100, *, decimal_override=None,
+  header_rows_override=None) -> (df_long, metadata)`.
+- Example summary:
+  ```bash
+  python -m slip_stick.parse_ftm10 --input tests/fixtures/ftm10_external_head.csv \
+    --summary --preview-lines 80
+  ```
+  Example with outputs:
+  ```bash
+  python -m slip_stick.parse_ftm10 --input t2en-crosil-42-external.csv \
+    --summary --out outputs/external
+  ```
 
 ## Development workflow
 1. Create a virtual environment:
@@ -54,19 +67,23 @@ the Memory Bank in `memory-bank/` to track decisions, constraints, and active wo
    pytest -q
    ```
 
-## Tooling baseline (to be implemented)
-- `pyproject.toml` with ruff (lint) and black (format) configuration.
-- `.pre-commit-config.yaml` with hooks for ruff, black, trailing whitespace, end of file
-  fixer, and YAML/TOML/JSON checks.
-- Pytest fixtures containing small representative CSV slices for deterministic tests.
+## Tooling baseline
+- `pyproject.toml` with ruff (lint) and black (format) configuration, pytest defaults,
+  and optional dev extras.
+- `.pre-commit-config.yaml` with hooks for ruff, black, trailing whitespace,
+  end-of-file fixer, and YAML/TOML/JSON checks.
+- Pytest suite covering header sniffing, decimal parsing, replicate grouping, long
+  format integrity, and CLI summary output (fixtures live in `tests/fixtures/`).
 - Continuous documentation updates in `memory-bank/` following the dependency order.
 
 ## Roadmap
-1. Scaffold package structure (`src/slip_stick/`, `tests/`, `pyproject.toml`).
-2. Implement CSV loader and CLI with full replicate support and diagnostics.
+1. Scaffold package structure (`src/slip_stick/`, `tests/`, `pyproject.toml`) — done.
+2. Implement CSV loader and CLI with full replicate support and diagnostics — done.
 3. Add decomposition module (wavelet MRA) plus metrics for each component.
 4. Integrate adaptive onset detection leveraging the mid band energy with hysteresis.
 5. Document usage patterns, defaults, and extend to internal dataset validation.
+6. Automate regression tests that span external/internal datasets and persist
+   baseline metadata snapshots.
 
 ## Contributing
 - Keep prose ASCII and wrap lines near 100 characters.

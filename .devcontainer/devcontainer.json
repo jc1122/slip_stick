@@ -1,0 +1,54 @@
+{
+  "name": "Python Project",
+  "image": "mcr.microsoft.com/devcontainers/python:1-3.12-bullseye",
+  "workspaceFolder": "/workspaces/slip_stick/",
+
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {},
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/node:1": {},
+    "ghcr.io/devcontainers/features/python:1": {},
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
+  },
+
+  "mounts": [
+    "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
+  ],
+
+  "containerEnv": {
+    "GITHUB_PERSONAL_ACCESS_TOKEN": "${localEnv:GITHUB_PERSONAL_ACCESS_TOKEN}",
+    "CODEX_HOME": "/workspaces/slip_stick/.codex",
+    "CLINE_AGENT": "1"
+  },
+
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python3.12",
+        "[python]": {
+          "editor.defaultFormatter": "ms-python.autopep8"
+        },
+        "terminal.integrated.env.linux": {
+          "CLINE_AGENT": "1"
+        },
+        "terminal.integrated.automationProfile.linux": {
+          "path": "/bin/bash",
+          "env": { "CLINE_AGENT": "1" }
+        },
+        "terminal.integrated.shellIntegration.enabled": true,
+        "terminal.integrated.enablePersistentSessions": false
+      },
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-python.autopep8",
+        "dbaeumer.vscode-eslint",
+        "google.geminicodeassist",
+        "saoudrizwan.claude-dev"
+      ]
+    }
+  },
+
+  "remoteUser": "vscode",
+  "postCreateCommand": "bash .devcontainer/postCreate.sh"
+}

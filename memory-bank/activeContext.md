@@ -1,9 +1,10 @@
 # Active context
 
 ## Current work focus
-Prepare a plan and workflow for FTM 10 data processing to detect the onset of the
-slip–stick phenomenon in tensile tester data. Define filtering strategy to separate
-low‑frequency peel, mid‑frequency slip–stick, and high‑frequency instrumental noise.
+Implement slip–stick detection on top of the tidy parser: estimate mid‑band from data,
+perform a lossless low/mid/high decomposition, and add a transparent onset detector
+with baseline‑aware thresholds, hysteresis, and minimum‑duration gating. Validate on
+the external and internal CSVs and document the workflow.
 
 ## Operating constraints (agent)
 - The coding agent should only preview at most 100 lines from any CSV to avoid
@@ -14,10 +15,38 @@ low‑frequency peel, mid‑frequency slip–stick, and high‑frequency instrum
 ## Near‑term next steps
 - Exercise the parser on both external and internal CSVs; capture edge cases and
   promote anomalies into metadata or explicit errors.
-- Prototype the band‑limited filtering and onset detection workflow that consumes
-  the tidy parser output.
-- Document updated CLI workflows, fixtures, and testing cadence so future agents
-  can extend detection logic without re-deriving parser details.
+- Finalize band estimation (Welch) and lossless three‑way decomposition (low/mid/high)
+  on `force_N`, exposed via `detect.py` and `detect_cli.py`.
+- Implement the mid‑band energy onset detector (baseline stats, adaptive threshold,
+  hysteresis, minimum duration) and export per‑replicate onsets.
+- Document updated CLI workflows, fixtures, and testing cadence so future agents can
+  extend detection logic without re‑deriving parser details.
+
+## Numbered TODOs — coding model
+1. Band estimation (per replicate)
+   - Add baseline‑aware option (contrast early window vs full), smoothing, guardrails.
+   - Aggregate to a robust experiment‑wide band (median/IQR) with per‑replicate overrides.
+2. Lossless decomposition
+   - Keep frequency‑domain complementary split; add optional zero‑phase FIR variant.
+   - Emit reconstruction RMS and energy partition metrics (E_low/E_mid/E_high).
+3. Onset detector
+   - Mid‑band envelope (moving RMS; Hilbert optional later), baseline median + k·MAD,
+     minimum duration, and hysteresis. Return onset index/time per replicate.
+4. CLI wiring
+   - Extend `detect_cli` with `--baseline [t0 t1]`, `--k`, `--min-duration`,
+     `--hysteresis`, `--write-json` (band + onsets), and band aggregation mode.
+5. Tests (unit + CLI)
+   - Synthetic bursts to validate band estimation and onset detection.
+   - Perfect‑reconstruction assertion (low + mid + high == original; small RMS).
+   - CLI smoke tests for estimation, decomposition, and JSON outputs.
+6. Validation on real data
+   - External/internal CSV runs; snapshot bands and onset counts; record anomalies.
+7. Documentation
+   - README detection section: flags, defaults, examples; link to Memory Bank.
+   - Update `techContext.md`/`systemPatterns.md` if parameters are finalized.
+8. Regression harness
+   - Persist `.metadata.json` and `.onsets.json` snapshots; add a simple comparator
+     script to detect drifts.
 
 ## Recent accomplishments — parsing phase
 - Dialect sniffing, MultiIndex header reconstruction, and numeric coercion with
@@ -28,14 +57,12 @@ low‑frequency peel, mid‑frequency slip–stick, and high‑frequency instrum
   pytest coverage via fixtures sampled from the external dataset.
 
 ### Tasks (actionable)
-- Harden parser resilience: improve error messages for header mismatches, missing
-  replicates, or monotonicity drops; extend metadata to surface anomalies.
-- Cross-validate external vs internal CSV previews (≤100 lines) and record any
-  schema differences in `progress.md` plus metadata defaults.
-- Sketch the filtering/onset detection workflow (functions, CLI extension points,
-  testing strategy) using the new tidy outputs.
-- Document parser usage in README (flag table, sample summary) and align the Memory
-  Bank with the upcoming detection workstream.
+- Harden parser resilience: improve errors for header mismatches, missing replicates,
+  and monotonicity drops; surface anomalies in metadata.
+- Cross‑validate external vs internal CSV previews (≤100 lines) and record any schema
+  differences in `progress.md` plus metadata defaults.
+- Implement onset detector and JSON export in `detect_cli` (see Numbered TODOs).
+- Document detection usage in README; align the Memory Bank with the detection track.
 
 ## Detailed TODOs — parser hardening and detection
 1. Add robust error handling:
@@ -70,6 +97,13 @@ low‑frequency peel, mid‑frequency slip–stick, and high‑frequency instrum
 11. Timebase edge cases:
     - Handle duplicate timestamps by dropping subsequent duplicates (record counts).
     - Allow varying lengths per replicate; long format should naturally accommodate.
+
+### Detailed TODOs — detection implementation
+1. Band estimation (Welch) with optional baseline contrast; robust replicate aggregation.
+2. Lossless decomposition metrics and optional FIR variant for cross‑check.
+3. Onset detection (envelope, baseline stats, adaptive threshold, hysteresis, duration).
+4. CLI flags for baseline/thresholds and `--write-json` outputs.
+5. Unit and CLI tests; fixture‑based smoke; synthetic validation.
 
 ### Tests (current coverage)
 - Pytest suite exercises header parsing, decimal coercion, replicate grouping, timebase

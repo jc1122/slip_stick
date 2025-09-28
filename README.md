@@ -45,6 +45,20 @@ the Memory Bank in `memory-bank/` to track decisions, constraints, and active wo
     --summary --out outputs/external
   ```
 
+## Detection scaffold
+- Module: `src/slip_stick/detect.py` implements two primitives:
+  - `estimate_midband_welch(y, fs)` to locate the mid‑band (dominant peak + −3 dB edges).
+  - `decompose_complementary(y, fs, f1, f2)` for a lossless split into low/mid/high
+    via complementary raised‑cosine filters (low + mid + high = original).
+- CLI (scaffold): `python -m slip_stick.detect_cli --input <file> [--estimate-bands] \
+  [--rep <id|index>] [--f1 <Hz>] [--f2 <Hz>] [--write-npz <path>]`.
+- Example:
+  ```bash
+  PYTHONPATH=src python -m slip_stick.detect_cli \
+    --input t2en-crosil-42-external.csv --rep 1 --estimate-bands \
+    --write-npz outputs/rep1_components
+  ```
+
 ## Development workflow
 1. Create a virtual environment:
    ```bash
@@ -79,7 +93,7 @@ the Memory Bank in `memory-bank/` to track decisions, constraints, and active wo
 ## Roadmap
 1. Scaffold package structure (`src/slip_stick/`, `tests/`, `pyproject.toml`) — done.
 2. Implement CSV loader and CLI with full replicate support and diagnostics — done.
-3. Add decomposition module (wavelet MRA) plus metrics for each component.
+3. Add decomposition module and band estimation — scaffolded (see `detect.py`).
 4. Integrate adaptive onset detection leveraging the mid band energy with hysteresis.
 5. Document usage patterns, defaults, and extend to internal dataset validation.
 6. Automate regression tests that span external/internal datasets and persist

@@ -1,8 +1,10 @@
-"""slip_stick package scaffold.
+"""slip_stick package.
 
-This package will host CSV parsing and detection utilities for slip–stick analysis.
-Implementation will be added in `ftm10.py` and related modules.
+CSV parsing utilities live in ``ftm10.py``. Detection and decomposition scaffolding
+is provided in ``detect.py`` with a CLI in ``detect_cli.py``.
 """
 
-__all__ = []  # populated after implementation
-
+__all__ = [
+    # Parser API
+    # (re-exported lazily to avoid importing heavy deps at package import time)
+]

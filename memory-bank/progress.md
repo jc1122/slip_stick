@@ -24,8 +24,9 @@
 - **Maintenance Procedures**: Establish regular update cycles and triggers.
 
 ## Current Status
-🟢 **PARSER MVP COMPLETE** – CSV loader, CLI, and pytest coverage are in place;
-focus shifts to parser hardening and detection pipeline design.
+🟡 **DETECTION SCAFFOLD IN PLACE** – Band estimation (Welch) and lossless
+decomposition are implemented with a CLI scaffold; next: onset detection,
+baseline‑aware band aggregation, tests, and documentation.
 
 ## Known Issues
 - **Parameter defaults TBD**: Filter cutoffs and thresholds will be finalized after data
@@ -93,3 +94,13 @@ focus shifts to parser hardening and detection pipeline design.
   long-frame shape, and CLI summary execution.
 - README updated with parser usage and flag descriptions; Memory Bank rewritten to
   focus on parser hardening and detection roadmap.
+
+### 2025-09-28 (detection scaffold + demo)
+- Implemented detection scaffolding:
+  - `src/slip_stick/detect.py` with `estimate_midband_welch` (Welch PSD) and
+    `decompose_complementary` (lossless low/mid/high split).
+  - `src/slip_stick/detect_cli.py` for band estimation and NPZ component export.
+- README updated with detection scaffold usage and examples.
+- Demo confirmed slip–stick centered ~1.6 Hz with typical band ≈ 1–3 Hz; one
+  replicate shows a ~30 Hz line (likely instrumental).
+- JPEG plots of original/low/mid/high written to `outputs/` for visual inspection.

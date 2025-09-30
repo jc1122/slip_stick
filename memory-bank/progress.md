@@ -33,8 +33,8 @@ baseline‑aware band aggregation, tests, and documentation.
   inspection.
 - **Dependence on manual updates**: No automation for documentation maintenance.
 - **Memory reset validation**: System effectiveness untested across actual resets.
-- **Internal dataset coverage**: Parser validated on external fixture; internal CSV
-  still needs smoke tests and metadata comparison.
+- **Internal dataset coverage**: Manual CLI smoke on the Crosil 42 internal file is in
+  place; automated fixtures and comparisons remain outstanding.
 
 ## Evolution of Project Decisions
 ### Initial Setup - 2025-09-28
@@ -104,3 +104,37 @@ baseline‑aware band aggregation, tests, and documentation.
 - Demo confirmed slip–stick centered ~1.6 Hz with typical band ≈ 1–3 Hz; one
   replicate shows a ~30 Hz line (likely instrumental).
 - JPEG plots of original/low/mid/high written to `outputs/` for visual inspection.
+
+### 2025-09-28 (detection TODO scaffold)
+- Added actionable band estimation and onset detection list to `activeContext.md`,
+  including CLI flags, diagnostics, tests, and a clear definition of done to guide
+  implementation.
+
+### 2025-09-29 (parser validation on Crosil 42 exports)
+- Raised the runtime requirement to Python 3.11+ so the parser can rely on
+  `zip(..., strict=True)` without shims; README/pyproject updated accordingly.
+- Ran the parser CLI via `python3.12` on `t2en-crosil-42-{external,internal}.csv`,
+  confirming CP1250 encoding, comma decimals, and stable 100 Hz sampling across
+  ten replicates.
+- Recorded that the internal CSV trims earlier (~54–57 s) because 168–500 blank
+  timestamp rows per replicate are dropped; external data retains the full ~60 s
+  window.
+- Next: surface the large `dropped_time_na` counts as metadata warnings and align
+  detection defaults with the shorter internal records.
+
+### 2025-09-29 (band estimation guardrails + decomposition metrics)
+- Extended `estimate_midband_welch` with baseline-window diagnostics, bandwidth
+  guardrails, and segment metadata; returns a `BandEstimate` dataclass for downstream
+  serialization.
+- Updated `decompose_complementary` to emit a `DecompositionResult` carrying low/mid/high
+  arrays, reconstruction RMS, and energy partition/fraction metrics.
+- CLI now reports mid-band energy fractions and writes the diagnostics alongside the
+  component NPZ payload, paving the way for JSON exports.
+
+### 2025-09-30 (detection CLI multi-replicate summaries)
+- Added `--all-reps` to `detect_cli` so the band estimation and decomposition pipeline
+  can iterate every replicate without manual loops.
+- Introduced JSON summary exports and helper utilities to expose band/decomposition
+  diagnostics for downstream comparison workflows.
+- Updated README and Memory Bank to reference the multi-replicate CLI usage and new
+  summary artifacts.

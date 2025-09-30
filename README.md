@@ -11,10 +11,14 @@ the Memory Bank in `memory-bank/` to track decisions, constraints, and active wo
   repeated blocks of three columns: time (`Czas`/`sec`), force (`Siła`/`N`), and
   displacement (`Przemieszczenie`/`mm`).
 - Sampling rate is approximately 100 Hz (derived from the `Czas` column increments).
+- Files decode cleanly with CP1250 encoding; this preserves Polish diacritics in the
+  headers.
 - Decimal separator is a comma; headers are quoted and span three rows (group label,
   column name, unit).
 - Agents preview at most 100 lines from any CSV to preserve context, but scripts will
   process entire files.
+- External runs contain the full ~60 s pull per replicate, while the internal export
+  terminates around 54–57 s because several hundred blank timestamp rows are dropped.
 
 ## Current focus
 1. Validate parsed replicates across external/internal datasets and capture edge
@@ -25,7 +29,8 @@ the Memory Bank in `memory-bank/` to track decisions, constraints, and active wo
    decomposition + detection notebooks.
 
 ## Parser CLI and API
-- Module entrypoint: `python -m slip_stick.parse_ftm10 --input <file> [flags]`.
+- Module entrypoint: `python3.11 -m slip_stick.parse_ftm10 --input <file> [flags]` (use
+  Python 3.11+ so the parser can rely on `zip(..., strict=True)`).
 - Flags:
   - `--summary` prints replicate counts, sampling stats, and NaN totals.
   - `--out PATH` writes `<PATH>.parquet` (tidy data) and `<PATH>.metadata.json`.
@@ -36,36 +41,46 @@ the Memory Bank in `memory-bank/` to track decisions, constraints, and active wo
   header_rows_override=None) -> (df_long, metadata)`.
 - Example summary:
   ```bash
-  python -m slip_stick.parse_ftm10 --input tests/fixtures/ftm10_external_head.csv \
+  python3.11 -m slip_stick.parse_ftm10 --input tests/fixtures/ftm10_external_head.csv \
     --summary --preview-lines 80
   ```
   Example with outputs:
   ```bash
-  python -m slip_stick.parse_ftm10 --input t2en-crosil-42-external.csv \
+  python3.11 -m slip_stick.parse_ftm10 --input t2en-crosil-42-external.csv \
     --summary --out outputs/external
   ```
 
 ## Detection scaffold
 - Module: `src/slip_stick/detect.py` implements two primitives:
-  - `estimate_midband_welch(y, fs)` to locate the mid‑band (dominant peak + −3 dB edges).
-  - `decompose_complementary(y, fs, f1, f2)` for a lossless split into low/mid/high
-    via complementary raised‑cosine filters (low + mid + high = original).
+  - `estimate_midband_welch(y, fs, *, baseline_window=None, ...) -> BandEstimate`
+    wraps a Welch PSD, smooths the spectrum, and reports `f1`, `f2`, `f_c`, and diagnostics
+    (segment count, bandwidth, optional baseline peak ratios).
+  - `decompose_complementary(y, fs, f1, f2, ...) -> DecompositionResult` performs the
+    lossless low/mid/high split (raised‑cosine filters) and returns components plus energy
+    partition metrics and reconstruction RMS.
 - CLI (scaffold): `python -m slip_stick.detect_cli --input <file> [--estimate-bands] \
-  [--rep <id|index>] [--f1 <Hz>] [--f2 <Hz>] [--write-npz <path>]`.
+  [--rep <id|index> | --all-reps] [--f1 <Hz>] [--f2 <Hz>] [--write-npz <path>] \
+  [--write-json <path>]`.
 - Example:
   ```bash
   PYTHONPATH=src python -m slip_stick.detect_cli \
     --input t2en-crosil-42-external.csv --rep 1 --estimate-bands \
     --write-npz outputs/rep1_components
   ```
+  Multi-replicate summary with JSON diagnostics:
+  ```bash
+  PYTHONPATH=src python -m slip_stick.detect_cli \
+    --input t2en-crosil-42-external.csv --all-reps --estimate-bands \
+    --write-json outputs/external_summary.json
+  ```
 
 ## Development workflow
-1. Create a virtual environment:
-   ```bash
-   python -m venv .venv
-   source .venv/bin/activate
-   python -m pip install -U pip
-   ```
+1. Create a virtual environment (Python 3.11+):
+  ```bash
+  python3.11 -m venv .venv
+  source .venv/bin/activate
+  python -m pip install -U pip
+  ```
 2. Install the project in editable mode with dev extras (once the packaging scaffold
    is committed):
    ```bash

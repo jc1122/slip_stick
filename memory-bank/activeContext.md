@@ -12,12 +12,13 @@ the external and internal CSVs and document the workflow.
 - All data characteristics (columns, units, sampling rate) will be inferred directly
   from the CSV files rather than relying on prior assumptions.
 
-## Near‑term next steps
-- Exercise the parser on both external and internal CSVs; capture edge cases and
-  promote anomalies into metadata or explicit errors.
-- Finalize band estimation (Welch) and lossless three‑way decomposition (low/mid/high)
-  on `force_N`, exposed via `detect.py` and `detect_cli.py`.
-- Implement the mid‑band energy onset detector (baseline stats, adaptive threshold,
+## Near-term next steps
+- Parser validation on `t2en-crosil-42-{external,internal}.csv` confirms CP1250
+  encoding, decimal commas, and dropped blank timestamps (up to 500 per replicate);
+  promote these findings into metadata warnings or docs.
+- Fold the new baseline-aware band estimation diagnostics into replicate/experiment
+  aggregation and expose energy partition metrics via `detect_cli` outputs.
+- Implement the mid-band energy onset detector (baseline stats, adaptive threshold,
   hysteresis, minimum duration) and export per‑replicate onsets.
 - Document updated CLI workflows, fixtures, and testing cadence so future agents can
   extend detection logic without re‑deriving parser details.
@@ -55,6 +56,19 @@ the external and internal CSVs and document the workflow.
   statistics (Fs, dt, NaN totals) is implemented.
 - CLI wiring delivers summary output, Parquet/JSON exports, logging controls, and
   pytest coverage via fixtures sampled from the external dataset.
+- Real-data audit on the Crosil 42 external/internal exports verifies the CLI output
+  under Python 3.11+, highlights CP1250 metadata, and quantifies blank timestamp
+  drops per replicate.
+
+## Recent accomplishments — detection phase
+- Welch band estimation now enforces guardrails, optional baseline windows, and richer
+  diagnostics (bandwidth, segment counts, baseline peak ratios).
+- Complementary decomposition returns a structured result with reconstruction RMS and
+  energy partition metrics; CLI surfaces mid-band energy fractions and writes the
+  diagnostics into NPZ artifacts.
+- `detect_cli` iterates over all replicates, writes per-replicate NPZ payloads, and can
+  emit JSON summaries that capture band estimates and decomposition diagnostics for
+  downstream comparison tooling.
 
 ### Tasks (actionable)
 - Harden parser resilience: improve errors for header mismatches, missing replicates,
@@ -125,3 +139,52 @@ the external and internal CSVs and document the workflow.
 - Slip–stick expresses as sustained mid‑frequency energy riding on a slowly varying
   peel trend and contaminated by faster instrumental noise. A band‑limited energy
   detector with hysteresis is an appropriate onset criterion.
+
+## Actionable TODOs — band estimation and onset detection (scaffold)
+
+### Band estimation
+- Add baseline‑aware option: estimate bands with and without a baseline window `(t0, t1)`.
+- Improve peak picking: smooth PSD, find −3 dB crossings; enforce `0 < f1 < f2 < 0.45·Fs`.
+- Handle edge cases: flat PSD, short records, narrow spectral lines; return NaN‑safe outputs.
+- Aggregate across replicates: median/IQR by default with per‑replicate overrides.
+- Expose diagnostics: resolution, smooth width, segment count, peak power, search band.
+- Keep JSON‑friendly outputs: `BandEstimate` plus a dict helper for serialization.
+
+### Onset detection
+- Envelope/energy: moving‑RMS by default; optional Hilbert envelope; parametrize window (s).
+- Baseline statistics: compute median and MAD over baseline window; record sample count.
+- Adaptive threshold: `thr = median + k·MAD`; clamp to non‑negative; record `k` and window.
+- Hysteresis and minimum duration: rising‑edge trigger with hold and duration gating.
+- Per‑replicate outputs: onset index/time, thresholds used, baseline window, method params.
+- JSON writer: persist `{replicate_id: {...}}` with version and diagnostics.
+
+### CLI wiring
+- Flags: `--baseline t0 t1`, `--k K`, `--min-duration S`, `--hysteresis R`,
+  `--method {rms,hilbert}`, `--env-win S`, `--all-reps`, `--write-json PATH`.
+- Defaults: estimate bands when `--f1/--f2` absent; sensible `k`, `min-duration`, and
+  `hysteresis` based on Fs.
+- Output: per‑replicate summary of band, onset time, thresholds, and key diagnostics.
+
+### Tests and validation
+- Synthetic signals: known mid‑band bursts at varied SNR; multi‑burst (choose first);
+  no‑onset case (expect None).
+- Reconstruction property: assert `low + mid + high ≈ original` (small RMS) before
+  detection.
+- Robustness: short records, NaNs at tails, lower Fs; threshold monotonicity with `k`.
+- CLI smoke: run detect with `--estimate-bands --all-reps --write-json` on fixture and
+  validate schema.
+- Baseline sensitivity: compare with/without baseline window; record differences.
+
+### Diagnostics and guardrails
+- Log chosen bands, thresholds, baseline window, envelope method, durations; warn on
+  clamping/NaNs.
+- Validate parameters: `0 < f1 < f2 < 0.5·Fs`, `min-duration > 0`, `k ≥ 0`,
+  `0 ≤ hysteresis < 1`.
+- Determinism: fixed windows, no randomness; document exact defaults.
+
+### Definition of done
+- Band estimation runs per replicate with aggregation and emits diagnostics.
+- Onset detector returns stable onset times on synthetic cases and the fixture set.
+- Decomposition validated: `low + mid + high` reconstructs original with small RMS.
+- Detect CLI processes one/all replicates, writes JSON, and prints concise summaries.
+- Unit and CLI tests pass; README updated with detection usage and defaults.

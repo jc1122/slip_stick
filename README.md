@@ -74,6 +74,29 @@ the Memory Bank in `memory-bank/` to track decisions, constraints, and active wo
     --write-json outputs/external_summary.json
   ```
 
+## Savitzky–Golay workflow
+- Detrending and visualisation are handled by `scripts/detrend_savgol.py`. The default
+  configuration uses displacement on the x-axis and a 50–200 mm window to isolate
+  slip–stick spikes while keeping the peel baseline flat.
+- `scripts/run_savgol_workflow.py` orchestrates the full analysis:
+  ```bash
+  python3.12 scripts/run_savgol_workflow.py \
+    --window-seconds 5.0 --polyorder 3 --distance-range 50 200 \
+    --summary-json outputs/savgol/workflow_summary.json
+  ```
+  The script performs three steps in sequence:
+  1. Detrend every dataset into `outputs/savgol/<dataset>/`, writing NPZ payloads and SVG
+     overlays (original, baseline, residual) keyed by replicate.
+  2. Compute mean force across 50–200 mm and scale by `25/90`; results appear in the CLI
+     output and in the JSON summary.
+  3. Analyse residual spikes with thresholds `ratio ≥ 10` and `|residual| ≥ 0.05 N`,
+     flagging replicates that exhibit slip–stick bursts. Per-replicate metrics are stored in
+     `outputs/savgol/residual_spike_summary.json` and included in the workflow summary.
+- The individual building blocks remain available:
+  - `scripts/average_force.py` reports mean/ scaled force for a displacement window.
+  - `scripts/analyze_residual_spikes.py` inspects NPZ residuals and highlights spike
+    candidates with configurable thresholds.
+
 ## Development workflow
 1. Create a virtual environment (Python 3.11+):
   ```bash

@@ -138,3 +138,27 @@ baseline‑aware band aggregation, tests, and documentation.
   diagnostics for downstream comparison workflows.
 - Updated README and Memory Bank to reference the multi-replicate CLI usage and new
   summary artifacts.
+- Recorded next focus: fold summaries into band aggregation, implement onset detection
+  with adaptive thresholds, and wire regression comparisons to the JSON outputs.
+
+### 2025-10-01 (savgol detrending overlays)
+- Implemented a lightweight NumPy Savitzky–Golay helper and a `scripts/detrend_savgol.py`
+  pipeline that walks every dataset, applies a ~2.5 s baseline window, and exports
+  per-replicate NPZ payloads plus dataset-level SVG overlays (original/baseline/residual).
+- Fallbacked to a pandas loader when the tidy parser trips on quirky headers so the
+  detrending still covers the Crosil and Rossella runs without relaxing the 100-line
+  preview rule.
+- Outputs land under `outputs/savgol/<dataset>/`, giving quick visual confirmation that
+  the slip–stick spikes remain after peel removal.
+- Extended the script to use SciPy when available, switch to displacement-orientated
+  plots, and crop replicates to a configurable distance window (e.g. 50–200 mm) before
+  detrending so the residual overlays highlight the region of interest.
+- Added `scripts/run_savgol_workflow.py` to run the end-to-end analysis: distance-windowed
+  SavGol detrending, average-force scaling (`25/90`), and residual spike detection with
+  default thresholds (`ratio ≥ 10`, `|residual| ≥ 0.05 N`). Outputs include SVG overlays,
+  per-dataset/replicate summaries, and an optional consolidated JSON artifact.
+- Verified the automated workflow reproduces manual findings: Crosil 42 external (rep 1_10)
+  and Rossella external (rep 1_9) still dominate the spike table, and all ten T1EN internal
+  replicates trip the 0.05 N threshold. Aggregate force numbers remain identical to the
+  earlier ad-hoc calculations, providing confidence that future runs can rely on the
+  consolidated script plus JSON summary under `outputs/savgol/workflow_summary.json`.

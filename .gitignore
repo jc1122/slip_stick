@@ -1,0 +1,15 @@
+# Generated analysis artifacts
+outputs/
+
+# Runtime caches
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.pre-commit-cache/
+
+# Local session logs
+.codex/
+
+# Misc
+*.npz

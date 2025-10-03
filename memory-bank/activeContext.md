@@ -16,17 +16,17 @@ the external and internal CSVs and document the workflow.
 - Parser validation on `t2en-crosil-42-{external,internal}.csv` confirms CP1250
   encoding, decimal commas, and dropped blank timestamps (up to 500 per replicate);
   promote these findings into metadata warnings or docs.
-- Fold the new baseline-aware band estimation diagnostics into replicate/experiment
-  aggregation and expose energy partition metrics via `detect_cli` outputs.
+- Design experiment-level band aggregation using the JSON summaries (median/IQR plus
+  outlier flags) and surface the results in CLI output.
 - Implement the mid-band energy onset detector (baseline stats, adaptive threshold,
-  hysteresis, minimum duration) and export per‑replicate onsets.
-- Document updated CLI workflows, fixtures, and testing cadence so future agents can
-  extend detection logic without re‑deriving parser details.
+  hysteresis, minimum duration) and extend JSON exports with per-replicate onsets.
+- Document detection defaults, JSON schema, and regression workflow so future agents
+  extend detection logic without re-deriving parser details.
 
 ## Numbered TODOs — coding model
 1. Band estimation (per replicate)
-   - Add baseline‑aware option (contrast early window vs full), smoothing, guardrails.
-   - Aggregate to a robust experiment‑wide band (median/IQR) with per‑replicate overrides.
+ - Add baseline‑aware option (contrast early window vs full), smoothing, guardrails.
+  - Aggregate to a robust experiment‑wide band (median/IQR) with per‑replicate overrides.
 2. Lossless decomposition
    - Keep frequency‑domain complementary split; add optional zero‑phase FIR variant.
    - Emit reconstruction RMS and energy partition metrics (E_low/E_mid/E_high).
@@ -35,7 +35,8 @@ the external and internal CSVs and document the workflow.
      minimum duration, and hysteresis. Return onset index/time per replicate.
 4. CLI wiring
    - Extend `detect_cli` with `--baseline [t0 t1]`, `--k`, `--min-duration`,
-     `--hysteresis`, `--write-json` (band + onsets), and band aggregation mode.
+     `--hysteresis`, `--env-win`, `--method {rms,hilbert}`, and band aggregation mode;
+     reuse existing `--all-reps/--write-json` plumbing to emit onset diagnostics.
 5. Tests (unit + CLI)
    - Synthetic bursts to validate band estimation and onset detection.
    - Perfect‑reconstruction assertion (low + mid + high == original; small RMS).
@@ -69,14 +70,27 @@ the external and internal CSVs and document the workflow.
 - `detect_cli` iterates over all replicates, writes per-replicate NPZ payloads, and can
   emit JSON summaries that capture band estimates and decomposition diagnostics for
   downstream comparison tooling.
+- Added a Savitzky–Golay detrending script that sweeps every dataset, saves per-replicate
+  baselines/residuals, and renders SVG overlays so the slip–stick spikes can be reviewed
+  independently of the peel trend.
+- Savitzky–Golay overlays now accept a displacement axis and optional distance window,
+  letting us focus plots (e.g. 50–200 mm) while still exporting cropped NPZ data.
+- Introduced `scripts/run_savgol_workflow.py` to automate detrending (distance axis,
+  50–200 mm window), scaled average-force reporting, and residual spike analysis with
+  thresholds `ratio ≥ 10` and `|residual| ≥ 0.05 N`.
+- Latest workflow run confirmed the automation reproduces the manual findings: all ten
+  internal T1EN replicates and key external ones (e.g., Crosil 42 external 1_10 and
+  Rossella external 1_9) exceed the spike thresholds, and the scaled mean forces match
+  the earlier 25/90 calculations.
 
 ### Tasks (actionable)
 - Harden parser resilience: improve errors for header mismatches, missing replicates,
   and monotonicity drops; surface anomalies in metadata.
 - Cross‑validate external vs internal CSV previews (≤100 lines) and record any schema
   differences in `progress.md` plus metadata defaults.
-- Implement onset detector and JSON export in `detect_cli` (see Numbered TODOs).
-- Document detection usage in README; align the Memory Bank with the detection track.
+- Implement onset detector and extend `detect_cli` JSON output with onset timings and
+  detection diagnostics (see Numbered TODOs).
+- Document detection usage in README; align Memory Bank and regression workflow notes.
 
 ## Detailed TODOs — parser hardening and detection
 1. Add robust error handling:

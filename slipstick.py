@@ -11,11 +11,7 @@ from pathlib import Path
 from typing import Generator, List, Sequence
 
 import numpy as np
-
-try:  # SciPy is optional; fall back to a NumPy-only implementation when absent.
-    from scipy.signal import savgol_filter as _scipy_savgol_filter  # type: ignore
-except Exception:  # pragma: no cover - optional dependency
-    _scipy_savgol_filter = None
+from scipy.signal import savgol_filter
 
 try:  # Plotting is optional; only enabled when matplotlib is present.
     import matplotlib.pyplot as plt  # type: ignore
@@ -403,30 +399,7 @@ def _window_length_from_seconds(window_seconds: float, fs: float) -> int:
 
 
 def _savgol(y: np.ndarray, *, window_length: int, polyorder: int) -> np.ndarray:
-    if _scipy_savgol_filter is not None:
-        return _scipy_savgol_filter(y, window_length=window_length, polyorder=polyorder, mode="mirror")
-    return _manual_savgol(y, window_length=window_length, polyorder=polyorder)
-
-
-def _manual_savgol(y: np.ndarray, *, window_length: int, polyorder: int) -> np.ndarray:
-    half = window_length // 2
-    coeffs = _savgol_coefficients(window_length, polyorder)
-    padded = np.pad(y, (half, half), mode="reflect")
-    filtered = np.convolve(padded, coeffs[::-1], mode="valid")
-    return filtered[: y.size]
-
-
-def _savgol_coefficients(window_length: int, polyorder: int) -> np.ndarray:
-    half = window_length // 2
-    if half == 0:
-        return np.ones(window_length, dtype=float)
-
-    scale = float(half)
-    x = np.arange(-half, half + 1, dtype=float) / scale
-    A = np.vander(x, polyorder + 1, increasing=True)
-    ATA = A.T @ A
-    pseudo = np.linalg.pinv(ATA) @ A.T
-    return pseudo[0]
+    return savgol_filter(y, window_length=window_length, polyorder=polyorder, mode="mirror")
 
 
 # ---------------------------------------------------------------------------

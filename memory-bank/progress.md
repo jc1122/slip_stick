@@ -3,8 +3,8 @@
 ## Recent updates
 - Default Savitzky–Golay baseline window now spans 50% of the trimmed trace
   (minimum 4 s) for better detrending of long runs.
-- Savitzky–Golay fallback coefficients are stabilised for large windows so the
-  NumPy path produces sensible baselines.
+- Savitzky–Golay smoothing now relies directly on SciPy, removing the custom
+  fallback implementation.
 - CSV parser now keeps embedded decimal commas even when fields are
   inconsistently quoted, restoring complete replicate traces (e.g. T2EN data).
 - Plots render force/baseline vs displacement and were regenerated for all

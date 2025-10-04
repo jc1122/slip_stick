@@ -34,7 +34,7 @@ that window the replicate is marked clean.
 
 - Python 3.11+
 - NumPy (required)
-- SciPy (optional — accelerates the Savitzky–Golay filter if available)
+- SciPy (required for Savitzky–Golay detrending)
 - Matplotlib (optional — required only when using `--plot-dir` to emit PNG plots)
 
 ## Data

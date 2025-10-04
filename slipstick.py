@@ -65,6 +65,8 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     dataset_stem = dataset_path.stem
 
+    summary: list[tuple[str, int]] = []
+
     for replicate in replicates:
         result = _analyse_replicate(
             replicate,
@@ -75,13 +77,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         if result is None:
             _print_summary(replicate.rep_id, 0, [], args.threshold)
+            summary.append((replicate.rep_id, 0))
             continue
 
         _print_summary(replicate.rep_id, result.time.size, result.spikes, args.threshold)
+        summary.append((replicate.rep_id, len(result.spikes)))
 
         if plot_dir is not None and plt is not None:
             out_path = plot_dir / f"{dataset_stem}_{replicate.rep_id}.png"
             _save_plot(out_path, replicate.rep_id, result, args.threshold)
+
+    _print_summary_totals(dataset_stem, summary)
 
     return 0
 
@@ -460,6 +466,20 @@ def _save_plot(out_path: Path, rep_id: str, result: DetectionResult, threshold: 
     fig.tight_layout()
     fig.savefig(out_path, dpi=150)
     plt.close(fig)
+
+
+def _print_summary_totals(dataset_stem: str, summary: list[tuple[str, int]]) -> None:
+    print(f"Summary for {dataset_stem}")
+    if not summary:
+        print("  No replicates processed.\n")
+        return
+    total = 0
+    for rep_id, count in summary:
+        total += count
+        plural = "spikes" if count != 1 else "spike"
+        print(f"  {rep_id}: {count} {plural}")
+    plural_total = "spikes" if total != 1 else "spike"
+    print(f"  Total: {total} {plural_total}\n")
 
 
 if __name__ == "__main__":  # pragma: no cover - CLI entry point

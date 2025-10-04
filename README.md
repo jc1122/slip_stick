@@ -30,6 +30,9 @@ Output is a short report per replicate listing the time, displacement, and
 residual amplitude of each spike above the threshold. If no spikes are found in
 that window the replicate is marked clean.
 
+A per-dataset summary follows at the end, listing the spike count detected in
+each replicate plus the dataset total.
+
 ## Dependencies
 
 - Python 3.11+

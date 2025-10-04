@@ -1,164 +1,18 @@
 # Progress
 
-## What Works
-- **Memory Bank Structure**: Complete file system architecture implemented
-- **.clinerules Reading**: Successfully read and understood system documentation
-- **Directory Creation**: memory-bank/ directory created successfully
-- **Core Files Created**:
-  - ✅ projectbrief.md - Foundation document with project requirements
-  - ✅ productContext.md - Product purpose and functionality explained
-  - ✅ activeContext.md - Current work status and next steps documented
-  - ✅ systemPatterns.md - System architecture and patterns defined
-  - ✅ techContext.md - Technology stack and setup requirements documented
-  - ✅ progress.md - Status tracking initialized
-- **Parser + CLI MVP**: `load_ftm10_csv` builds tidy long-format data and metadata;
-  `python -m slip_stick.parse_ftm10` emits summaries and optional Parquet/JSON.
+## Recent updates
+- Removed legacy parsing and detection scaffolding, tests, scripts, and tooling.
+- Added a single self-contained script (`slipstick.py`) that loads the CSV,
+  detrends the 50–200 mm displacement window, and reports residual spikes.
+- Introduced an optional `--plot-dir` flag that writes spike-marked PNG plots when
+  matplotlib is available.
+- Trimmed the README and Memory Bank to match the lightweight workflow.
 
-## What's Left to Build
-- **Detection Pipeline**: Frequency-aware filtering, onset detection, and validation
-  across external/internal datasets.
-- **Extended Documentation**: Integrate parser usage, flag tables, and detection
-  guidance into README + Memory Bank.
-- **Regression Harness**: Automate comparisons between fixtures and full CSVs to
-  guard against parser regressions.
-- **Maintenance Procedures**: Establish regular update cycles and triggers.
+## Current status
+🟢 Ready for ad-hoc use. The CLI works on the provided CSV format with default
+parameters and prints per-replicate spike summaries.
 
-## Current Status
-🟡 **DETECTION SCAFFOLD IN PLACE** – Band estimation (Welch) and lossless
-decomposition are implemented with a CLI scaffold; next: onset detection,
-baseline‑aware band aggregation, tests, and documentation.
-
-## Known Issues
-- **Parameter defaults TBD**: Filter cutoffs and thresholds will be finalized after data
-  inspection.
-- **Dependence on manual updates**: No automation for documentation maintenance.
-- **Memory reset validation**: System effectiveness untested across actual resets.
-- **Internal dataset coverage**: Manual CLI smoke on the Crosil 42 internal file is in
-  place; automated fixtures and comparisons remain outstanding.
-
-## Evolution of Project Decisions
-### Initial Setup - 2025-09-28
-- **Decision**: Implement Memory Bank exactly as specified in .clinerules
-- **Rationale**: Strict adherence to defined workflow ensures reliability
-- **Outcome**: Complete initialization achieved successfully
-- **Next**: Begin actual project development with Memory Bank as foundation
-
-### Technical Choices Made
-- **Markdown Only**: Followed .clinerules requirement for universal documentation format
-- **Hierarchical Structure**: Implemented exact dependency relationships defined in system
-- **Flat Organization**: Maintained simple directory structure for ease of maintenance
-
-### Future Considerations
-- Monitor Memory Bank effectiveness across actual work sessions
-- Identify additional files needed as project complexity grows
-- Consider tooling automation for repetitive documentation tasks
-- Evaluate update trigger effectiveness (significant changes vs. explicit requests)
-- Capture detection heuristics and validation datasets once filtering prototypes land
-  so subsequent agents can iterate quickly.
-
-## Project updates
-### 2025-09-28
-- Added project‑specific scope: FTM 10 slip–stick onset detection from tensile CSVs.
-- Recorded agent constraint: preview at most 100 CSV lines; scripts read full files.
-- Captured processing approach: separate low/mid/high frequency bands, detect onset
-  using mid‑band energy with adaptive thresholds, hysteresis, and minimum duration.
-- Next: finalize processing plan and parameters; draft CLI interface.
-
-### 2025-09-28 (parsing plan recorded)
-- Defined actionable parsing tasks, tests, and dev tooling requirements.
-- Pre‑commit planned with ruff and black; tests to use small CSV fixtures.
-- Pending: code scaffolding, parser implementation, CLI summary command, and tests.
-
-### 2025-09-28 (documentation)
-- Drafted `README.md` summarizing data structure, current focus, workflow, and roadmap.
-
-### 2025-09-28 (scaffolding)
-- Added packaging + tooling: `pyproject.toml`, `.pre-commit-config.yaml`.
-- Created module skeleton: `src/slip_stick/ftm10.py` (signatures + docstrings).
-- Added CLI scaffold: `src/slip_stick/parse_ftm10.py` (instruction-only).
-- Added test stubs and fixture guidance under `tests/`.
-- Updated `README.md` to reflect scaffolded tooling.
-
-### 2025-09-28 (actionable TODOs added)
-- Inserted a detailed, ordered TODO list in `memory-bank/activeContext.md` guiding
-  implementation of the CSV loader, helpers, CLI wiring, writers, fixtures, tests,
-  validation steps, error handling, documentation, and tooling cadence.
-
-### 2025-09-28 (parser implementation + tests)
-- Implemented dialect sniffing, decimal-comma handling, replicate normalization, and
-  tidy long-format conversion in `src/slip_stick/ftm10.py`.
-- Wired the CLI (`python -m slip_stick.parse_ftm10`) with summary output, Parquet/JSON
-  exports, logging flags, and decimal/header overrides.
-- Added fixture `tests/fixtures/ftm10_external_head.csv` (≤120 lines) plus pytest
-  coverage for header parsing, decimal coercion, replicate detection, timebase stats,
-  long-frame shape, and CLI summary execution.
-- README updated with parser usage and flag descriptions; Memory Bank rewritten to
-  focus on parser hardening and detection roadmap.
-
-### 2025-09-28 (detection scaffold + demo)
-- Implemented detection scaffolding:
-  - `src/slip_stick/detect.py` with `estimate_midband_welch` (Welch PSD) and
-    `decompose_complementary` (lossless low/mid/high split).
-  - `src/slip_stick/detect_cli.py` for band estimation and NPZ component export.
-- README updated with detection scaffold usage and examples.
-- Demo confirmed slip–stick centered ~1.6 Hz with typical band ≈ 1–3 Hz; one
-  replicate shows a ~30 Hz line (likely instrumental).
-- JPEG plots of original/low/mid/high written to `outputs/` for visual inspection.
-
-### 2025-09-28 (detection TODO scaffold)
-- Added actionable band estimation and onset detection list to `activeContext.md`,
-  including CLI flags, diagnostics, tests, and a clear definition of done to guide
-  implementation.
-
-### 2025-09-29 (parser validation on Crosil 42 exports)
-- Raised the runtime requirement to Python 3.11+ so the parser can rely on
-  `zip(..., strict=True)` without shims; README/pyproject updated accordingly.
-- Ran the parser CLI via `python3.12` on `t2en-crosil-42-{external,internal}.csv`,
-  confirming CP1250 encoding, comma decimals, and stable 100 Hz sampling across
-  ten replicates.
-- Recorded that the internal CSV trims earlier (~54–57 s) because 168–500 blank
-  timestamp rows per replicate are dropped; external data retains the full ~60 s
-  window.
-- Next: surface the large `dropped_time_na` counts as metadata warnings and align
-  detection defaults with the shorter internal records.
-
-### 2025-09-29 (band estimation guardrails + decomposition metrics)
-- Extended `estimate_midband_welch` with baseline-window diagnostics, bandwidth
-  guardrails, and segment metadata; returns a `BandEstimate` dataclass for downstream
-  serialization.
-- Updated `decompose_complementary` to emit a `DecompositionResult` carrying low/mid/high
-  arrays, reconstruction RMS, and energy partition/fraction metrics.
-- CLI now reports mid-band energy fractions and writes the diagnostics alongside the
-  component NPZ payload, paving the way for JSON exports.
-
-### 2025-09-30 (detection CLI multi-replicate summaries)
-- Added `--all-reps` to `detect_cli` so the band estimation and decomposition pipeline
-  can iterate every replicate without manual loops.
-- Introduced JSON summary exports and helper utilities to expose band/decomposition
-  diagnostics for downstream comparison workflows.
-- Updated README and Memory Bank to reference the multi-replicate CLI usage and new
-  summary artifacts.
-- Recorded next focus: fold summaries into band aggregation, implement onset detection
-  with adaptive thresholds, and wire regression comparisons to the JSON outputs.
-
-### 2025-10-01 (savgol detrending overlays)
-- Implemented a lightweight NumPy Savitzky–Golay helper and a `scripts/detrend_savgol.py`
-  pipeline that walks every dataset, applies a ~2.5 s baseline window, and exports
-  per-replicate NPZ payloads plus dataset-level SVG overlays (original/baseline/residual).
-- Fallbacked to a pandas loader when the tidy parser trips on quirky headers so the
-  detrending still covers the Crosil and Rossella runs without relaxing the 100-line
-  preview rule.
-- Outputs land under `outputs/savgol/<dataset>/`, giving quick visual confirmation that
-  the slip–stick spikes remain after peel removal.
-- Extended the script to use SciPy when available, switch to displacement-orientated
-  plots, and crop replicates to a configurable distance window (e.g. 50–200 mm) before
-  detrending so the residual overlays highlight the region of interest.
-- Added `scripts/run_savgol_workflow.py` to run the end-to-end analysis: distance-windowed
-  SavGol detrending, average-force scaling (`25/90`), and residual spike detection with
-  default thresholds (`ratio ≥ 10`, `|residual| ≥ 0.05 N`). Outputs include SVG overlays,
-  per-dataset/replicate summaries, and an optional consolidated JSON artifact.
-- Verified the automated workflow reproduces manual findings: Crosil 42 external (rep 1_10)
-  and Rossella external (rep 1_9) still dominate the spike table, and all ten T1EN internal
-  replicates trip the 0.05 N threshold. Aggregate force numbers remain identical to the
-  earlier ad-hoc calculations, providing confidence that future runs can rely on the
-  consolidated script plus JSON summary under `outputs/savgol/workflow_summary.json`.
+## Open considerations
+- Confirm performance on very long runs or replicates with sparse data.
+- Validate plotting output once matplotlib is installed.
+- Decide later whether exporting results to a file format is necessary.

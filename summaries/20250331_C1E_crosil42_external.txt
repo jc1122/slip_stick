@@ -1,0 +1,74 @@
+Replicate 1_1
+  samples=3000 threshold=0.050 N
+  No spikes above threshold in the selected displacement window.
+
+Replicate 1_2
+  samples=3000 threshold=0.050 N
+  time=19.410 s | disp=96.831 mm | residual=0.2990 N (idx 936)
+  time=28.540 s | disp=142.481 mm | residual=0.0977 N (idx 1849)
+
+Replicate 1_3
+  samples=3000 threshold=0.050 N
+  time=14.670 s | disp=73.131 mm | residual=0.0550 N (idx 462)
+  time=14.750 s | disp=73.531 mm | residual=0.0511 N (idx 470)
+
+Replicate 1_4
+  samples=3000 threshold=0.050 N
+  No spikes above threshold in the selected displacement window.
+
+Replicate 1_5
+  samples=3000 threshold=0.050 N
+  time=18.480 s | disp=92.181 mm | residual=0.0607 N (idx 843)
+
+Replicate 1_6
+  samples=3000 threshold=0.050 N
+  time=26.480 s | disp=132.181 mm | residual=0.0958 N (idx 1643)
+  time=26.810 s | disp=133.831 mm | residual=0.0524 N (idx 1676)
+  time=32.050 s | disp=160.031 mm | residual=0.1189 N (idx 2200)
+
+Replicate 1_7
+  samples=3000 threshold=0.050 N
+  No spikes above threshold in the selected displacement window.
+
+Replicate 1_8
+  samples=922 threshold=0.050 N
+  time=18.040 s | disp=89.981 mm | residual=-0.0710 N (idx 799)
+  time=19.010 s | disp=94.831 mm | residual=0.1094 N (idx 896)
+  time=19.260 s | disp=96.045 mm | residual=-0.1624 N (idx 921)
+
+Replicate 1_9
+  samples=0 threshold=0.050 N
+  No spikes above threshold in the selected displacement window.
+
+Replicate 1_10
+  samples=2543 threshold=0.050 N
+  time=32.110 s | disp=160.331 mm | residual=-0.0519 N (idx 2206)
+  time=32.240 s | disp=160.981 mm | residual=-0.0514 N (idx 2219)
+  time=32.280 s | disp=161.181 mm | residual=-0.0536 N (idx 2223)
+  time=33.060 s | disp=165.081 mm | residual=-0.0705 N (idx 2301)
+  time=34.400 s | disp=171.781 mm | residual=0.5382 N (idx 2435)
+  time=35.470 s | disp=177.067 mm | residual=-0.1018 N (idx 2542)
+
+Replicate 1_11
+  samples=3000 threshold=0.050 N
+  No spikes above threshold in the selected displacement window.
+
+Replicate 1_12
+  samples=3000 threshold=0.050 N
+  time=18.740 s | disp=93.481 mm | residual=0.2229 N (idx 869)
+
+Summary for 20250331_C1E_crosil42_external
+  1_1: 0 spikes
+  1_2: 2 spikes
+  1_3: 2 spikes
+  1_4: 0 spikes
+  1_5: 1 spike
+  1_6: 3 spikes
+  1_7: 0 spikes
+  1_8: 3 spikes
+  1_9: 0 spikes
+  1_10: 6 spikes
+  1_11: 0 spikes
+  1_12: 1 spike
+  Total: 18 spikes
+

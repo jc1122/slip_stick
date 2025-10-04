@@ -1,0 +1,55 @@
+Replicate 1_1
+  samples=3000 threshold=0.050 N
+  No spikes above threshold in the selected displacement window.
+
+Replicate 1_2
+  samples=3000 threshold=0.050 N
+  No spikes above threshold in the selected displacement window.
+
+Replicate 1_3
+  samples=3000 threshold=0.050 N
+  No spikes above threshold in the selected displacement window.
+
+Replicate 1_4
+  samples=3000 threshold=0.050 N
+  No spikes above threshold in the selected displacement window.
+
+Replicate 1_5
+  samples=3000 threshold=0.050 N
+  No spikes above threshold in the selected displacement window.
+
+Replicate 1_6
+  samples=3000 threshold=0.050 N
+  No spikes above threshold in the selected displacement window.
+
+Replicate 1_7
+  samples=3000 threshold=0.050 N
+  time=27.170 s | disp=135.631 mm | residual=0.0668 N (idx 1712)
+
+Replicate 1_8
+  samples=3000 threshold=0.050 N
+  time=20.860 s | disp=104.081 mm | residual=0.4707 N (idx 1081)
+
+Replicate 1_9
+  samples=3000 threshold=0.050 N
+  No spikes above threshold in the selected displacement window.
+
+Replicate 1_10
+  samples=3000 threshold=0.050 N
+  time=18.580 s | disp=92.681 mm | residual=0.0656 N (idx 853)
+  time=30.140 s | disp=150.481 mm | residual=0.0601 N (idx 2009)
+  time=35.660 s | disp=178.081 mm | residual=0.0644 N (idx 2561)
+
+Summary for 20250514_T1EN_crosil42_external
+  1_1: 0 spikes
+  1_2: 0 spikes
+  1_3: 0 spikes
+  1_4: 0 spikes
+  1_5: 0 spikes
+  1_6: 0 spikes
+  1_7: 1 spike
+  1_8: 1 spike
+  1_9: 0 spikes
+  1_10: 3 spikes
+  Total: 5 spikes
+

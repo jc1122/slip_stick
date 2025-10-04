@@ -33,6 +33,13 @@ that window the replicate is marked clean.
 A per-dataset summary follows at the end, listing the spike count detected in
 each replicate plus the dataset total.
 
+Use the generated summaries (e.g., redirect to `summaries/<dataset>.txt`) to
+store results alongside the PNG plots:
+
+```bash
+python slipstick.py --input datasets/<file>.csv --plot-dir plots > summaries/<file>.txt
+```
+
 ## Dependencies
 
 - Python 3.11+

@@ -1,0 +1,220 @@
+Replicate 1_1
+  samples=3000 threshold=0.050 N
+  time=10.630 s | disp=52.931 mm | residual=1.7685 N (idx 58)
+  time=12.970 s | disp=64.631 mm | residual=2.0348 N (idx 292)
+  time=13.140 s | disp=65.481 mm | residual=-0.7977 N (idx 309)
+  time=13.530 s | disp=67.431 mm | residual=0.0576 N (idx 348)
+  time=13.970 s | disp=69.631 mm | residual=-0.8411 N (idx 392)
+  time=14.610 s | disp=72.831 mm | residual=1.6266 N (idx 456)
+  time=14.970 s | disp=74.631 mm | residual=-0.4632 N (idx 492)
+  time=15.730 s | disp=78.431 mm | residual=-0.6897 N (idx 568)
+  time=16.070 s | disp=80.131 mm | residual=0.0600 N (idx 602)
+  time=16.280 s | disp=81.181 mm | residual=-0.5495 N (idx 623)
+  time=16.800 s | disp=83.781 mm | residual=0.0599 N (idx 675)
+  time=17.210 s | disp=85.831 mm | residual=-0.6529 N (idx 716)
+  time=17.680 s | disp=88.181 mm | residual=2.4604 N (idx 763)
+  time=18.300 s | disp=91.281 mm | residual=0.0555 N (idx 825)
+  time=18.360 s | disp=91.581 mm | residual=0.1182 N (idx 831)
+  time=18.800 s | disp=93.781 mm | residual=2.2932 N (idx 875)
+  time=19.490 s | disp=97.231 mm | residual=1.5300 N (idx 944)
+  time=19.590 s | disp=97.731 mm | residual=-0.1314 N (idx 954)
+  time=19.670 s | disp=98.131 mm | residual=0.0753 N (idx 962)
+  time=19.820 s | disp=98.881 mm | residual=-0.5706 N (idx 977)
+  time=20.010 s | disp=99.831 mm | residual=0.1490 N (idx 996)
+  time=20.340 s | disp=101.481 mm | residual=-0.9821 N (idx 1029)
+  time=20.820 s | disp=103.881 mm | residual=3.0915 N (idx 1077)
+  time=22.320 s | disp=111.381 mm | residual=0.1587 N (idx 1227)
+  time=22.450 s | disp=112.031 mm | residual=-1.3147 N (idx 1240)
+  time=24.660 s | disp=123.081 mm | residual=-4.7433 N (idx 1461)
+  time=25.380 s | disp=126.681 mm | residual=0.4731 N (idx 1533)
+  time=26.060 s | disp=130.082 mm | residual=-3.0473 N (idx 1601)
+  time=29.050 s | disp=145.031 mm | residual=4.1386 N (idx 1900)
+  time=30.850 s | disp=154.031 mm | residual=-6.7941 N (idx 2080)
+  time=34.370 s | disp=171.631 mm | residual=-2.9293 N (idx 2432)
+  time=36.610 s | disp=182.831 mm | residual=-7.3026 N (idx 2656)
+  time=39.650 s | disp=198.031 mm | residual=5.6292 N (idx 2960)
+
+Replicate 1_2
+  samples=3000 threshold=0.050 N
+  time=10.740 s | disp=53.481 mm | residual=0.1364 N (idx 69)
+  time=13.260 s | disp=66.082 mm | residual=0.6882 N (idx 321)
+  time=18.590 s | disp=92.731 mm | residual=-3.4992 N (idx 854)
+  time=19.670 s | disp=98.131 mm | residual=4.0593 N (idx 962)
+  time=21.560 s | disp=107.581 mm | residual=-0.9055 N (idx 1151)
+  time=22.200 s | disp=110.781 mm | residual=3.1072 N (idx 1215)
+  time=24.090 s | disp=120.231 mm | residual=2.8486 N (idx 1404)
+  time=25.280 s | disp=126.181 mm | residual=-5.1819 N (idx 1523)
+  time=27.520 s | disp=137.381 mm | residual=-2.9319 N (idx 1747)
+  time=28.300 s | disp=141.281 mm | residual=2.9680 N (idx 1825)
+  time=31.740 s | disp=158.481 mm | residual=3.9661 N (idx 2169)
+  time=32.960 s | disp=164.581 mm | residual=-8.3656 N (idx 2291)
+  time=34.000 s | disp=169.781 mm | residual=0.2700 N (idx 2395)
+  time=34.450 s | disp=172.031 mm | residual=-7.2163 N (idx 2440)
+  time=37.120 s | disp=185.381 mm | residual=1.4554 N (idx 2707)
+  time=39.760 s | disp=198.581 mm | residual=-0.2258 N (idx 2971)
+
+Replicate 1_3
+  samples=1658 threshold=0.050 N
+  time=10.050 s | disp=50.031 mm | residual=-9.0512 N (idx 0)
+  time=11.520 s | disp=57.381 mm | residual=2.8479 N (idx 147)
+  time=13.010 s | disp=64.831 mm | residual=-0.1739 N (idx 296)
+  time=13.110 s | disp=65.331 mm | residual=0.1359 N (idx 306)
+  time=13.840 s | disp=68.981 mm | residual=-1.4507 N (idx 379)
+  time=14.840 s | disp=73.981 mm | residual=1.5330 N (idx 479)
+  time=15.370 s | disp=76.631 mm | residual=-0.7362 N (idx 532)
+  time=15.840 s | disp=78.981 mm | residual=0.5766 N (idx 579)
+  time=16.280 s | disp=81.181 mm | residual=-2.7906 N (idx 623)
+  time=18.380 s | disp=91.681 mm | residual=2.8879 N (idx 833)
+  time=19.220 s | disp=95.882 mm | residual=-3.1270 N (idx 917)
+  time=20.840 s | disp=103.981 mm | residual=-10.1984 N (idx 1079)
+  time=22.070 s | disp=110.131 mm | residual=-10.5712 N (idx 1202)
+  time=23.030 s | disp=114.931 mm | residual=9.8403 N (idx 1298)
+  time=24.910 s | disp=124.331 mm | residual=-3.6012 N (idx 1486)
+  time=26.620 s | disp=132.843 mm | residual=-5.6670 N (idx 1657)
+
+Replicate 1_4
+  samples=3000 threshold=0.050 N
+  time=10.190 s | disp=50.731 mm | residual=-2.2983 N (idx 14)
+  time=11.250 s | disp=56.031 mm | residual=3.6327 N (idx 120)
+  time=12.690 s | disp=63.231 mm | residual=-2.4808 N (idx 264)
+  time=13.730 s | disp=68.431 mm | residual=-2.3736 N (idx 368)
+  time=15.270 s | disp=76.131 mm | residual=3.4052 N (idx 522)
+  time=16.300 s | disp=81.281 mm | residual=-0.7058 N (idx 625)
+  time=16.720 s | disp=83.381 mm | residual=1.3124 N (idx 667)
+  time=17.480 s | disp=87.181 mm | residual=-3.7487 N (idx 743)
+  time=19.360 s | disp=96.581 mm | residual=2.4463 N (idx 931)
+  time=21.300 s | disp=106.281 mm | residual=0.7916 N (idx 1125)
+  time=21.610 s | disp=107.831 mm | residual=-0.1119 N (idx 1156)
+  time=21.720 s | disp=108.381 mm | residual=0.0741 N (idx 1167)
+  time=22.430 s | disp=111.931 mm | residual=3.4457 N (idx 1238)
+  time=23.420 s | disp=116.881 mm | residual=-0.0718 N (idx 1337)
+  time=24.110 s | disp=120.331 mm | residual=-7.1974 N (idx 1406)
+  time=29.320 s | disp=146.381 mm | residual=8.6737 N (idx 1927)
+  time=31.380 s | disp=156.681 mm | residual=2.4328 N (idx 2133)
+  time=33.490 s | disp=167.231 mm | residual=-8.3178 N (idx 2344)
+  time=36.470 s | disp=182.131 mm | residual=5.8933 N (idx 2642)
+  time=37.520 s | disp=187.381 mm | residual=-4.7635 N (idx 2747)
+  time=38.290 s | disp=191.231 mm | residual=3.7975 N (idx 2824)
+  time=39.290 s | disp=196.231 mm | residual=-3.5316 N (idx 2924)
+
+Replicate 1_5
+  samples=1611 threshold=0.050 N
+  time=10.050 s | disp=50.031 mm | residual=-1.8244 N (idx 0)
+  time=11.390 s | disp=56.731 mm | residual=6.1819 N (idx 134)
+  time=14.740 s | disp=73.482 mm | residual=9.2540 N (idx 469)
+  time=15.950 s | disp=79.531 mm | residual=0.1010 N (idx 590)
+  time=16.470 s | disp=82.132 mm | residual=-5.7531 N (idx 642)
+  time=17.770 s | disp=88.631 mm | residual=-1.4383 N (idx 772)
+  time=18.590 s | disp=92.731 mm | residual=8.1334 N (idx 854)
+  time=19.690 s | disp=98.231 mm | residual=5.4600 N (idx 964)
+  time=22.170 s | disp=110.631 mm | residual=-0.8485 N (idx 1212)
+  time=23.170 s | disp=115.631 mm | residual=-8.1550 N (idx 1312)
+  time=24.340 s | disp=121.481 mm | residual=1.1195 N (idx 1429)
+  time=24.460 s | disp=122.082 mm | residual=-0.8462 N (idx 1441)
+  time=26.150 s | disp=130.496 mm | residual=-8.8925 N (idx 1610)
+
+Replicate 1_6
+  samples=1796 threshold=0.050 N
+  time=10.220 s | disp=50.882 mm | residual=2.3728 N (idx 17)
+  time=10.620 s | disp=52.881 mm | residual=0.2467 N (idx 57)
+  time=10.780 s | disp=53.681 mm | residual=-1.3108 N (idx 73)
+  time=11.510 s | disp=57.331 mm | residual=-4.7124 N (idx 146)
+  time=13.060 s | disp=65.081 mm | residual=-2.0282 N (idx 301)
+  time=16.010 s | disp=79.831 mm | residual=-7.7426 N (idx 596)
+  time=17.170 s | disp=85.631 mm | residual=3.7775 N (idx 712)
+  time=19.290 s | disp=96.231 mm | residual=-1.1722 N (idx 924)
+  time=19.800 s | disp=98.781 mm | residual=0.1262 N (idx 975)
+  time=19.960 s | disp=99.581 mm | residual=-0.0845 N (idx 991)
+  time=20.040 s | disp=99.981 mm | residual=-0.0632 N (idx 999)
+  time=22.250 s | disp=111.031 mm | residual=-10.8122 N (idx 1220)
+  time=26.070 s | disp=130.131 mm | residual=-6.2364 N (idx 1602)
+  time=26.590 s | disp=132.731 mm | residual=0.1998 N (idx 1654)
+  time=26.920 s | disp=134.381 mm | residual=-6.2925 N (idx 1687)
+  time=28.000 s | disp=139.743 mm | residual=-7.6800 N (idx 1795)
+
+Replicate 1_7
+  samples=1841 threshold=0.050 N
+  time=10.050 s | disp=50.031 mm | residual=-1.3333 N (idx 0)
+  time=12.340 s | disp=61.481 mm | residual=-4.5167 N (idx 229)
+  time=14.550 s | disp=72.531 mm | residual=-2.0422 N (idx 450)
+  time=15.070 s | disp=75.131 mm | residual=1.9737 N (idx 502)
+  time=15.470 s | disp=77.131 mm | residual=-1.0425 N (idx 542)
+  time=16.210 s | disp=80.831 mm | residual=2.4164 N (idx 616)
+  time=16.540 s | disp=82.481 mm | residual=-0.6349 N (idx 649)
+  time=16.930 s | disp=84.431 mm | residual=1.4355 N (idx 688)
+  time=17.210 s | disp=85.831 mm | residual=-0.4995 N (idx 716)
+  time=17.610 s | disp=87.831 mm | residual=1.7945 N (idx 756)
+  time=18.020 s | disp=89.882 mm | residual=-3.6554 N (idx 797)
+  time=20.480 s | disp=102.181 mm | residual=1.7997 N (idx 1043)
+  time=22.640 s | disp=112.981 mm | residual=-3.0408 N (idx 1259)
+  time=24.400 s | disp=121.781 mm | residual=5.1446 N (idx 1435)
+  time=25.510 s | disp=127.331 mm | residual=7.2479 N (idx 1546)
+  time=25.960 s | disp=129.581 mm | residual=6.9916 N (idx 1591)
+  time=26.710 s | disp=133.331 mm | residual=-3.9398 N (idx 1666)
+  time=27.440 s | disp=136.981 mm | residual=0.6977 N (idx 1739)
+  time=28.450 s | disp=141.989 mm | residual=-7.8452 N (idx 1840)
+
+Replicate 1_8
+  samples=1792 threshold=0.050 N
+  time=12.330 s | disp=61.431 mm | residual=7.4279 N (idx 228)
+  time=16.560 s | disp=82.581 mm | residual=6.9165 N (idx 651)
+  time=22.660 s | disp=113.081 mm | residual=-2.2650 N (idx 1261)
+  time=25.910 s | disp=129.331 mm | residual=-10.0003 N (idx 1586)
+  time=27.960 s | disp=139.541 mm | residual=-6.4237 N (idx 1791)
+
+Replicate 1_9
+  samples=2237 threshold=0.050 N
+  time=10.290 s | disp=51.231 mm | residual=0.3157 N (idx 24)
+  time=14.310 s | disp=71.331 mm | residual=8.6098 N (idx 426)
+  time=16.790 s | disp=83.731 mm | residual=6.8645 N (idx 674)
+  time=18.440 s | disp=91.981 mm | residual=-6.1205 N (idx 839)
+  time=20.240 s | disp=100.981 mm | residual=-8.8923 N (idx 1019)
+  time=21.480 s | disp=107.181 mm | residual=3.2960 N (idx 1143)
+  time=24.150 s | disp=120.531 mm | residual=-0.3086 N (idx 1410)
+  time=24.700 s | disp=123.281 mm | residual=-0.0634 N (idx 1465)
+  time=25.460 s | disp=127.081 mm | residual=-0.3949 N (idx 1541)
+  time=26.450 s | disp=132.031 mm | residual=0.8646 N (idx 1640)
+  time=32.410 s | disp=161.778 mm | residual=-30.0172 N (idx 2236)
+
+Replicate 1_10
+  samples=3000 threshold=0.050 N
+  time=10.050 s | disp=50.031 mm | residual=-3.8734 N (idx 0)
+  time=11.970 s | disp=59.631 mm | residual=4.5266 N (idx 192)
+  time=13.250 s | disp=66.031 mm | residual=-3.4958 N (idx 320)
+  time=14.800 s | disp=73.781 mm | residual=5.5521 N (idx 475)
+  time=15.920 s | disp=79.381 mm | residual=5.0361 N (idx 587)
+  time=17.290 s | disp=86.231 mm | residual=-2.8119 N (idx 724)
+  time=17.730 s | disp=88.431 mm | residual=0.0896 N (idx 768)
+  time=17.950 s | disp=89.531 mm | residual=-0.8920 N (idx 790)
+  time=18.090 s | disp=90.231 mm | residual=0.2620 N (idx 804)
+  time=18.230 s | disp=90.931 mm | residual=-0.6618 N (idx 818)
+  time=19.080 s | disp=95.181 mm | residual=2.3986 N (idx 903)
+  time=19.380 s | disp=96.681 mm | residual=-1.4739 N (idx 933)
+  time=20.100 s | disp=100.281 mm | residual=2.7148 N (idx 1005)
+  time=21.160 s | disp=105.581 mm | residual=-2.1514 N (idx 1111)
+  time=22.480 s | disp=112.181 mm | residual=-2.7110 N (idx 1243)
+  time=24.430 s | disp=121.931 mm | residual=0.7228 N (idx 1438)
+  time=27.270 s | disp=136.131 mm | residual=7.8871 N (idx 1722)
+  time=28.490 s | disp=142.231 mm | residual=-3.2290 N (idx 1844)
+  time=31.780 s | disp=158.681 mm | residual=-1.7415 N (idx 2173)
+  time=33.360 s | disp=166.581 mm | residual=-4.0105 N (idx 2331)
+  time=34.550 s | disp=172.531 mm | residual=4.9668 N (idx 2450)
+  time=35.380 s | disp=176.681 mm | residual=-2.8079 N (idx 2533)
+  time=36.400 s | disp=181.781 mm | residual=5.5756 N (idx 2635)
+  time=37.090 s | disp=185.231 mm | residual=-2.5127 N (idx 2704)
+  time=38.210 s | disp=190.831 mm | residual=7.5680 N (idx 2816)
+  time=39.740 s | disp=198.481 mm | residual=-4.4453 N (idx 2969)
+
+Summary for 20250602_U2E_rossella_external
+  1_1: 33 spikes
+  1_2: 16 spikes
+  1_3: 16 spikes
+  1_4: 22 spikes
+  1_5: 13 spikes
+  1_6: 16 spikes
+  1_7: 19 spikes
+  1_8: 5 spikes
+  1_9: 11 spikes
+  1_10: 26 spikes
+  Total: 177 spikes
+

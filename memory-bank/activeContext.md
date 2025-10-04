@@ -4,7 +4,8 @@
 All effort centres on `slipstick.py`. The script now defaults to a long
 Savitzky–Golay window (50% of the trimmed trace, minimum 4 s), prints per-dataset
 spike summaries, and produces force-vs-displacement plots (baseline plus residual
-with spike markers) when `--plot-dir` is used.
+with spike markers) when `--plot-dir` is used. Summaries can be redirected to
+text files for archival alongside the plots.
 
 ## Operating constraints
 - Assume the CSV layout documented in the project brief.

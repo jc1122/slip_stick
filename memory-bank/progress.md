@@ -5,7 +5,8 @@
   (minimum 4 s) for better detrending of long runs.
 - Savitzky–Golay smoothing now relies directly on SciPy, removing the custom
   fallback implementation.
-- CLI prints a per-dataset spike count summary (per replicate and total).
+- CLI prints a per-dataset spike count summary (per replicate and total) and can
+  be redirected to text files for archival together with plots.
 - CSV parser now keeps embedded decimal commas even when fields are
   inconsistently quoted, restoring complete replicate traces (e.g. T2EN data).
 - Plots render force/baseline vs displacement and were regenerated for all

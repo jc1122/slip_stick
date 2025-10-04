@@ -1,12 +1,14 @@
 # Progress
 
 ## Recent updates
-- Removed legacy parsing and detection scaffolding, tests, scripts, and tooling.
-- Added a single self-contained script (`slipstick.py`) that loads the CSV,
-  detrends the 50–200 mm displacement window, and reports residual spikes.
-- Introduced an optional `--plot-dir` flag that writes spike-marked PNG plots when
-  matplotlib is available.
-- Trimmed the README and Memory Bank to match the lightweight workflow.
+- Default Savitzky–Golay baseline window now spans 50% of the trimmed trace
+  (minimum 4 s) for better detrending of long runs.
+- Savitzky–Golay fallback coefficients are stabilised for large windows so the
+  NumPy path produces sensible baselines.
+- CSV parser now keeps embedded decimal commas even when fields are
+  inconsistently quoted, restoring complete replicate traces (e.g. T2EN data).
+- Plots render force/baseline vs displacement and were regenerated for all
+  datasets after the parser fix.
 
 ## Current status
 🟢 Ready for ad-hoc use. The CLI works on the provided CSV format with default

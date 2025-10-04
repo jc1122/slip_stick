@@ -100,8 +100,11 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--window-seconds",
         type=float,
-        default=0.5,
-        help="Savitzky–Golay window duration in seconds (converted to nearest odd number of samples).",
+        default=None,
+        help=(
+            "Savitzky–Golay window duration in seconds (converted to nearest odd number of samples). "
+            "Defaults to a long window equal to 50% of the trimmed trace duration (minimum 4 s)."
+        ),
     )
     parser.add_argument("--polyorder", type=int, default=3, help="Savitzky–Golay polynomial order.")
     parser.add_argument("--threshold", type=float, default=0.05, help="Residual spike threshold (newtons).")
@@ -203,8 +206,13 @@ def _split_csv_line(line: str) -> List[str]:
                 else:
                     in_quotes = not in_quotes
             elif ch == ',' and not in_quotes:
-                cells.append("".join(field))
-                field = []
+                prev_ch = text[i - 1] if i > 0 else ''
+                next_ch = text[i + 1] if i + 1 < length else ''
+                if prev_ch.isdigit() and next_ch.isdigit():
+                    field.append(ch)
+                else:
+                    cells.append("".join(field))
+                    field = []
             else:
                 field.append(ch)
             i += 1
@@ -283,7 +291,7 @@ def detect_spikes(
     replicate: Replicate,
     *,
     displacement_window: tuple[float, float],
-    window_seconds: float,
+    window_seconds: float | None = None,
     polyorder: int,
     threshold: float,
 ) -> List[Spike]:
@@ -301,7 +309,7 @@ def _analyse_replicate(
     replicate: Replicate,
     *,
     displacement_window: tuple[float, float],
-    window_seconds: float,
+    window_seconds: float | None,
     polyorder: int,
     threshold: float,
 ) -> DetectionResult | None:
@@ -321,7 +329,13 @@ def _analyse_replicate(
     if fs is None or fs <= 0:
         return None
 
-    window_length = _window_length_from_seconds(window_seconds, fs)
+    trace_duration = float(time[-1] - time[0]) if time.size > 1 else 0.0
+    if window_seconds is None or window_seconds <= 0:
+        long_window_seconds = max(trace_duration * 0.50, 4.0)
+    else:
+        long_window_seconds = window_seconds
+
+    window_length = _window_length_from_seconds(long_window_seconds, fs)
     if window_length <= polyorder:
         window_length = polyorder + 1
     if window_length % 2 == 0:
@@ -403,7 +417,12 @@ def _manual_savgol(y: np.ndarray, *, window_length: int, polyorder: int) -> np.n
 
 
 def _savgol_coefficients(window_length: int, polyorder: int) -> np.ndarray:
-    x = np.arange(-(window_length // 2), window_length // 2 + 1, dtype=float)
+    half = window_length // 2
+    if half == 0:
+        return np.ones(window_length, dtype=float)
+
+    scale = float(half)
+    x = np.arange(-half, half + 1, dtype=float) / scale
     A = np.vander(x, polyorder + 1, increasing=True)
     ATA = A.T @ A
     pseudo = np.linalg.pinv(ATA) @ A.T
@@ -437,24 +456,31 @@ def _save_plot(out_path: Path, rep_id: str, result: DetectionResult, threshold: 
     assert plt is not None  # plotting gated by caller
 
     spike_indices = [sp.index for sp in result.spikes]
-    spike_times = result.time[spike_indices] if spike_indices else np.array([])
+    spike_disp = result.disp[spike_indices] if spike_indices else np.array([])
 
     fig, (ax_force, ax_residual) = plt.subplots(2, 1, sharex=True, figsize=(10, 6))
 
-    ax_force.plot(result.time, result.force, label="force", color="tab:blue", linewidth=1.1)
-    ax_force.plot(result.time, result.baseline, label="baseline", color="tab:orange", linestyle="--", linewidth=1.0)
+    ax_force.plot(result.disp, result.force, label="force", color="tab:blue", linewidth=1.1)
+    ax_force.plot(
+        result.disp,
+        result.baseline,
+        label="baseline",
+        color="tab:orange",
+        linestyle="--",
+        linewidth=1.0,
+    )
     if spike_indices:
-        ax_force.scatter(spike_times, result.force[spike_indices], color="tab:red", marker="x", label="spikes")
+        ax_force.scatter(spike_disp, result.force[spike_indices], color="tab:red", marker="x", label="spikes")
     ax_force.set_ylabel("Force (N)")
     ax_force.set_title(f"Replicate {rep_id}")
     ax_force.legend(loc="upper left")
 
-    ax_residual.plot(result.time, result.residual, color="tab:red", label="residual", linewidth=1.0)
+    ax_residual.plot(result.disp, result.residual, color="tab:red", label="residual", linewidth=1.0)
     ax_residual.axhline(threshold, color="tab:gray", linestyle="--", linewidth=0.8, label="±threshold")
     ax_residual.axhline(-threshold, color="tab:gray", linestyle="--", linewidth=0.8)
     if spike_indices:
-        ax_residual.scatter(spike_times, result.residual[spike_indices], color="tab:red", marker="x")
-    ax_residual.set_xlabel("Time (s)")
+        ax_residual.scatter(spike_disp, result.residual[spike_indices], color="tab:red", marker="x")
+    ax_residual.set_xlabel("Displacement (mm)")
     ax_residual.set_ylabel("Residual (N)")
     ax_residual.legend(loc="upper left")
 

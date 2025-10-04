@@ -19,10 +19,12 @@ python slipstick.py --input path/to/tensile.csv
 Optional flags:
 
 - `--disp-min` / `--disp-max`: displacement window (defaults 50–200 mm).
-- `--window-seconds`: Savitzky–Golay window length in seconds (default 0.5 s).
+- `--window-seconds`: Savitzky–Golay window length in seconds. Defaults to a long
+  window equal to 50% of the trimmed trace duration (minimum 4 s).
 - `--polyorder`: Savitzky–Golay polynomial order (default 3).
 - `--threshold`: absolute residual force threshold (default 0.05 N).
 - `--plot-dir`: directory for PNG plots with spikes marked (requires matplotlib).
+  Plots show force and baseline against displacement plus the residual trace.
 
 Output is a short report per replicate listing the time, displacement, and
 residual amplitude of each spike above the threshold. If no spikes are found in

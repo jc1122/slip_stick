@@ -37,6 +37,18 @@ that window the replicate is marked clean.
 - SciPy (required for Savitzky–Golay detrending)
 - Matplotlib (optional — required only when using `--plot-dir` to emit PNG plots)
 
+Install the required libraries with:
+
+```bash
+python -m pip install -r requirements.txt
+```
+
+Add `matplotlib` if you plan to generate plots:
+
+```bash
+python -m pip install matplotlib
+```
+
 ## Data
 
 Place CSV files under `datasets/` or pass absolute paths. The script never

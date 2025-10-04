@@ -30,9 +30,10 @@ that window the replicate is marked clean.
 
 ## Dependencies
 
-The script only requires Python 3.11+ and NumPy. If SciPy is installed it is
-used for the Savitzky–Golay filter; otherwise a lightweight NumPy fallback runs
-instead.
+- Python 3.11+
+- NumPy (required)
+- SciPy (optional — accelerates the Savitzky–Golay filter if available)
+- Matplotlib (optional — required only when using `--plot-dir` to emit PNG plots)
 
 ## Data
 

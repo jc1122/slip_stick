@@ -25,6 +25,51 @@ Optional flags:
 - `--threshold`: absolute residual force threshold (default 0.05 N).
 - `--plot-dir`: directory for PNG plots with spikes marked (requires matplotlib).
   Plots show force and baseline against displacement plus the residual trace.
+- `--noise-disp-min`: lower displacement bound (mm) for the instrumental-noise
+  window (defaults to 1 mm).
+- `--noise-disp-max`: upper displacement bound (mm) for the instrumental-noise
+  window (defaults to 5 mm). The script detrends the force in this window with a
+  long Savitzky–Golay filter (window ≈ ¼ of the displacement span) before
+  reporting noise statistics.
+- `--noise-plot-dir`: directory for PNG plots of the inferred noise. Each
+  replicate plot shows the raw force, SavGol baseline, and detrended residual
+  histogram; a dataset-level summary gathers bias and residual spread (requires
+  matplotlib).
+- `--noise-force-max`: optional absolute force bound (N) that filters the noise
+  window to quieter samples.
+- `--noise-min-samples`: minimum number of samples used to characterise the
+  noise window (defaults to 40, with a fallback to the earliest samples if the
+  displacement bound supplies fewer points).
+- `--noise-force-onset`: absolute force (N) that marks the onset of specimen
+  engagement. Samples at or above this force are excluded from the noise window
+  (defaults to 0.2 N).
+
+Noise statistics are printed per replicate alongside the spike summary and
+collated per dataset to help tune detection thresholds.
+
+### Instrumental noise estimation
+
+The first few millimetres of displacement (default 1–5 mm) are assumed to
+contain only instrumental noise. Inside that window the script:
+
+1. Filters out any samples whose absolute force exceeds `--noise-force-onset`
+   (default 0.2 N) or, if provided, `--noise-force-max`.
+2. Fits a Savitzky–Golay baseline with a long window (≈ ¼ of the remaining
+   displacement span) to remove gradual ramps that precede the peel.
+3. Treats the residual about that baseline as pure noise.
+
+Per replicate the report provides:
+
+- `bias`: the mean level of the SavGol baseline (instrument zero error).
+- `std`: residual standard deviation after detrending.
+- `max_abs`: the extreme residual excursion observed.
+- `n`: the number of noise samples that satisfied the filters.
+
+When `--noise-plot-dir` is set, each PNG highlights the bias (green dotted
+line), raw vs baseline force traces, and the residual-force histogram, while the
+dataset summary plot stacks the biases and residual spreads for quick
+comparison. Use these plots to assess whether the tester was correctly zeroed
+and to decide on appropriate spike-detection thresholds.
 
 Output is a short report per replicate listing the time, displacement, and
 residual amplitude of each spike above the threshold. If no spikes are found in

@@ -6,7 +6,7 @@ from __future__ import annotations
 import argparse
 import re
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Generator, List, Sequence
 
@@ -45,6 +45,21 @@ class DetectionResult:
     spikes: List[Spike]
 
 
+@dataclass
+class NoiseEstimate:
+    std_n: float
+    dc_offset_n: float
+    max_abs_n: float
+    sample_count: int
+    disp_max_mm: float
+    time_span_s: float
+    raw_force: np.ndarray = field(repr=False)
+    baseline_force: np.ndarray = field(repr=False)
+    residual_force: np.ndarray = field(repr=False)
+    time_s: np.ndarray = field(repr=False)
+    disp_mm: np.ndarray = field(repr=False)
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(list(argv) if argv is not None else None)
@@ -63,11 +78,33 @@ def main(argv: Sequence[str] | None = None) -> int:
             plot_dir = Path(args.plot_dir)
             plot_dir.mkdir(parents=True, exist_ok=True)
 
+    noise_plot_dir: Path | None = None
+    if args.noise_plot_dir:
+        if plt is None:
+            print("matplotlib is required for plotting; skipping --noise-plot-dir output.", file=sys.stderr)
+        else:
+            noise_plot_dir = Path(args.noise_plot_dir)
+            noise_plot_dir.mkdir(parents=True, exist_ok=True)
+
     dataset_stem = dataset_path.stem
 
     summary: list[tuple[str, int]] = []
+    noise_summary: list[tuple[str, NoiseEstimate | None]] = []
 
     for replicate in replicates:
+        noise_estimate = estimate_instrumental_noise(
+            replicate,
+            disp_min=args.noise_disp_min,
+            disp_max=args.noise_disp_max,
+            force_abs_max=args.noise_force_max,
+            min_samples=args.noise_min_samples,
+            force_onset=args.noise_force_onset,
+        )
+        noise_summary.append((replicate.rep_id, noise_estimate))
+        if noise_plot_dir is not None and plt is not None and noise_estimate is not None:
+            noise_out = noise_plot_dir / f"{dataset_stem}_{replicate.rep_id}_noise.png"
+            _save_noise_plot(noise_out, replicate.rep_id, noise_estimate)
+
         result = _analyse_replicate(
             replicate,
             displacement_window=(args.disp_min, args.disp_max),
@@ -76,17 +113,33 @@ def main(argv: Sequence[str] | None = None) -> int:
             threshold=args.threshold,
         )
         if result is None:
-            _print_summary(replicate.rep_id, 0, [], args.threshold)
+            _print_summary(
+                replicate.rep_id,
+                0,
+                [],
+                args.threshold,
+                noise_estimate=noise_estimate,
+            )
             summary.append((replicate.rep_id, 0))
             continue
 
-        _print_summary(replicate.rep_id, result.time.size, result.spikes, args.threshold)
+        _print_summary(
+            replicate.rep_id,
+            result.time.size,
+            result.spikes,
+            args.threshold,
+            noise_estimate=noise_estimate,
+        )
         summary.append((replicate.rep_id, len(result.spikes)))
 
         if plot_dir is not None and plt is not None:
             out_path = plot_dir / f"{dataset_stem}_{replicate.rep_id}.png"
             _save_plot(out_path, replicate.rep_id, result, args.threshold)
 
+    _print_noise_totals(dataset_stem, noise_summary)
+    if noise_plot_dir is not None and plt is not None:
+        summary_out = noise_plot_dir / f"{dataset_stem}_noise_summary.png"
+        _save_noise_summary_plot(summary_out, dataset_stem, noise_summary)
     _print_summary_totals(dataset_stem, summary)
 
     return 0
@@ -115,6 +168,46 @@ def _build_parser() -> argparse.ArgumentParser:
         help=(
             "Optional directory for PNG plots with spikes marked. "
             "Requires matplotlib; files are named <dataset>_<replicate>.png."
+        ),
+    )
+    parser.add_argument(
+        "--noise-plot-dir",
+        help=(
+            "Optional directory for plots of the inferred instrumental noise. "
+            "Requires matplotlib; files are named <dataset>_<replicate>_noise.png."
+        ),
+    )
+    parser.add_argument(
+        "--noise-disp-min",
+        type=float,
+        default=1.0,
+        help="Lower displacement bound (mm) for the noise window (defaults to 1 mm).",
+    )
+    parser.add_argument(
+        "--noise-disp-max",
+        type=float,
+        default=5.0,
+        help="Upper displacement bound (mm) for the instrumental noise window (defaults to 5 mm).",
+    )
+    parser.add_argument(
+        "--noise-force-max",
+        type=float,
+        default=None,
+        help="Optional absolute force bound (N) to keep noise samples; omit to skip force filtering.",
+    )
+    parser.add_argument(
+        "--noise-min-samples",
+        type=int,
+        default=40,
+        help="Minimum number of points to use for noise estimation (falls back to earliest samples).",
+    )
+    parser.add_argument(
+        "--noise-force-onset",
+        type=float,
+        default=0.2,
+        help=(
+            "Absolute force (N) that marks the onset of specimen engagement. The noise window excludes "
+            "samples at or above this force."
         ),
     )
     return parser
@@ -285,6 +378,120 @@ def _parse_float(text: str) -> float | None:
 
 
 # ---------------------------------------------------------------------------
+# Instrumental noise helpers
+# ---------------------------------------------------------------------------
+
+
+def estimate_instrumental_noise(
+    replicate: Replicate,
+    *,
+    disp_min: float,
+    disp_max: float,
+    force_abs_max: float | None,
+    min_samples: int,
+    force_onset: float | None,
+) -> NoiseEstimate | None:
+    if replicate.force_n.size == 0:
+        return None
+
+    disp_limit_min = max(disp_min, 0.0)
+    disp_limit_max = max(disp_max, disp_limit_min)
+    if min_samples <= 0:
+        min_samples = 1
+
+    noise_mask = (replicate.disp_mm >= disp_limit_min) & (replicate.disp_mm <= disp_limit_max)
+    if force_abs_max is not None and force_abs_max > 0:
+        noise_mask &= np.abs(replicate.force_n) <= force_abs_max
+
+    indices = np.nonzero(noise_mask)[0]
+    target_count = min(min_samples, replicate.force_n.size)
+    if indices.size == 0:
+        fallback_candidates = np.where(
+            (replicate.disp_mm >= disp_limit_min) & (replicate.disp_mm <= disp_limit_max)
+        )[0]
+        indices = fallback_candidates[:target_count]
+
+    indices = indices[indices < replicate.force_n.size]
+    if indices.size == 0:
+        return None
+
+    indices.sort()
+
+    if indices.size == 0:
+        return None
+
+    force_segment = replicate.force_n[indices]
+    if force_onset is not None and force_onset > 0:
+        onset_mask = np.abs(force_segment) >= force_onset
+        if np.any(onset_mask):
+            first_contact_rel = int(np.where(onset_mask)[0][0])
+            indices = indices[:first_contact_rel]
+            force_segment = replicate.force_n[indices]
+
+    if indices.size == 0:
+        return None
+
+    time_segment = replicate.time_s[indices]
+    disp_segment = replicate.disp_mm[indices]
+
+    disp_span = float(np.max(disp_segment) - np.min(disp_segment)) if disp_segment.size else 0.0
+    if disp_span <= 0.0:
+        disp_span = max(float(disp_limit_max - disp_limit_min), 1.0)
+
+    polyorder = 2
+    baseline_force = np.full_like(force_segment, float(np.mean(force_segment)))
+    residual_force = force_segment - baseline_force
+
+    if force_segment.size >= 5:
+        delta_disp = np.diff(disp_segment)
+        step = np.median(np.abs(delta_disp[delta_disp != 0])) if delta_disp.size else 0.0
+        if step <= 0.0:
+            step = disp_span / max(force_segment.size - 1, 1)
+        window_disp = max(disp_span * 0.25, step)
+        window_samples = int(round(window_disp / step)) if step > 0 else force_segment.size
+        window_samples = max(window_samples, polyorder + 1, 3)
+        if window_samples % 2 == 0:
+            window_samples += 1
+        if window_samples > force_segment.size:
+            window_samples = force_segment.size if force_segment.size % 2 == 1 else force_segment.size - 1
+        if window_samples > polyorder and window_samples >= 3:
+            try:
+                baseline_force = savgol_filter(
+                    force_segment,
+                    window_length=window_samples,
+                    polyorder=polyorder,
+                    mode="interp",
+                )
+                residual_force = force_segment - baseline_force
+            except ValueError:
+                pass
+
+    offset = float(np.mean(baseline_force))
+    std = float(np.std(residual_force, ddof=1)) if residual_force.size > 1 else 0.0
+    max_abs = float(np.max(np.abs(residual_force))) if residual_force.size else 0.0
+    disp_max_used = float(np.max(disp_segment)) if disp_segment.size else 0.0
+    time_span = (
+        float(np.max(time_segment) - np.min(time_segment))
+        if time_segment.size > 1
+        else 0.0
+    )
+
+    return NoiseEstimate(
+        std_n=std,
+        dc_offset_n=offset,
+        max_abs_n=max_abs,
+        sample_count=int(force_segment.size),
+        disp_max_mm=disp_max_used,
+        time_span_s=time_span,
+        raw_force=np.asarray(force_segment, dtype=float),
+        baseline_force=np.asarray(baseline_force, dtype=float),
+        residual_force=np.asarray(residual_force, dtype=float),
+        time_s=np.asarray(time_segment, dtype=float),
+        disp_mm=np.asarray(disp_segment, dtype=float),
+    )
+
+
+# ---------------------------------------------------------------------------
 # Spike detection helpers
 # ---------------------------------------------------------------------------
 
@@ -413,9 +620,28 @@ def _savgol(y: np.ndarray, *, window_length: int, polyorder: int) -> np.ndarray:
 # ---------------------------------------------------------------------------
 
 
-def _print_summary(rep_id: str, sample_count: int, spikes: List[Spike], threshold: float) -> None:
+def _print_summary(
+    rep_id: str,
+    sample_count: int,
+    spikes: List[Spike],
+    threshold: float,
+    *,
+    noise_estimate: NoiseEstimate | None,
+) -> None:
     print(f"Replicate {rep_id}")
-    print(f"  samples={sample_count} threshold={threshold:.3f} N")
+    header_bits = [f"samples={sample_count}", f"threshold={threshold:.3f} N"]
+    print("  " + " | ".join(header_bits))
+    if noise_estimate is not None:
+        print(
+            "  noise: std={:.5f} N | bias={:.5f} N | max_abs={:.5f} N | n={} | disp≤{:.3f} mm | span={:.3f} s".format(
+                noise_estimate.std_n,
+                noise_estimate.dc_offset_n,
+                noise_estimate.max_abs_n,
+                noise_estimate.sample_count,
+                noise_estimate.disp_max_mm,
+                noise_estimate.time_span_s,
+            )
+        )
     if not spikes:
         print("  No spikes above threshold in the selected displacement window.\n")
         return
@@ -466,6 +692,118 @@ def _save_plot(out_path: Path, rep_id: str, result: DetectionResult, threshold: 
     fig.tight_layout()
     fig.savefig(out_path, dpi=150)
     plt.close(fig)
+
+
+def _save_noise_plot(out_path: Path, rep_id: str, noise: NoiseEstimate) -> None:
+    assert plt is not None
+
+    fig = plt.figure(figsize=(9, 6))
+    gs = fig.add_gridspec(2, 1, height_ratios=[2, 1])
+
+    ax_series = fig.add_subplot(gs[0])
+    ax_series.plot(noise.disp_mm, noise.raw_force, label="raw force", color="tab:blue", linewidth=1.0)
+    ax_series.plot(
+        noise.disp_mm,
+        noise.baseline_force,
+        label="Savgol baseline",
+        color="tab:orange",
+        linestyle="--",
+        linewidth=1.0,
+    )
+    ax_series.axhline(noise.dc_offset_n, color="tab:green", linestyle=":", linewidth=0.9, label="baseline mean")
+    ax_series.axhline(0.0, color="tab:gray", linestyle="--", linewidth=0.8)
+    ax_series.set_ylabel("Force (N)")
+    ax_series.set_title(f"Replicate {rep_id} noise window")
+    ax_series.legend(loc="upper right")
+
+    ax_hist = fig.add_subplot(gs[1])
+    residual = noise.residual_force
+    bins = min(60, max(10, int(np.sqrt(max(residual.size, 1)))))
+    ax_hist.hist(residual, bins=bins, color="tab:red", alpha=0.75)
+    ax_hist.axvline(0.0, color="tab:gray", linestyle="--", linewidth=0.8)
+    ax_hist.set_xlabel("Residual force (N)")
+    ax_hist.set_ylabel("Count")
+    ax_hist.set_title(
+        f"std={noise.std_n:.5f} N | max |noise|={noise.max_abs_n:.5f} N | baseline µ={noise.dc_offset_n:.5f} N"
+    )
+
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=150)
+    plt.close(fig)
+
+
+def _save_noise_summary_plot(
+    out_path: Path, dataset_stem: str, noise_entries: list[tuple[str, NoiseEstimate | None]]
+) -> None:
+    assert plt is not None
+
+    available = [(rep_id, est) for rep_id, est in noise_entries if est is not None]
+    if not available:
+        return
+
+    rep_ids = [rep_id for rep_id, _ in available]
+    biases = np.array([est.dc_offset_n for _, est in available], dtype=float)
+    stds = np.array([est.std_n for _, est in available], dtype=float)
+    max_abs = np.array([est.max_abs_n for _, est in available], dtype=float)
+
+    width = max(8.0, len(rep_ids) * 0.7)
+    fig, (ax_bias, ax_std) = plt.subplots(2, 1, figsize=(width, 6), sharex=True)
+
+    x = np.arange(len(rep_ids))
+
+    ax_bias.bar(x, biases, color="tab:blue")
+    ax_bias.axhline(0.0, color="tab:gray", linestyle="--", linewidth=0.8)
+    ax_bias.set_ylabel("Bias (N)")
+    ax_bias.set_title(f"Instrument bias per replicate – {dataset_stem}")
+
+    ax_std.bar(x, stds, color="tab:orange", label="std dev")
+    ax_std.scatter(x, max_abs, color="tab:red", marker="x", label="max |noise|")
+    ax_std.set_ylabel("Noise (N)")
+    ax_std.set_title("Noise spread and extrema")
+    ax_std.legend(loc="upper right")
+    ax_std.set_xticks(x)
+    ax_std.set_xticklabels(rep_ids, rotation=45, ha="right")
+
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=150)
+    plt.close(fig)
+
+
+def _print_noise_totals(dataset_stem: str, noise_entries: list[tuple[str, NoiseEstimate | None]]) -> None:
+    print(f"Noise estimates for {dataset_stem}")
+    available = [(rep_id, est) for rep_id, est in noise_entries if est is not None]
+    if not available:
+        print("  No noise window samples found.\n")
+        return
+
+    stds = np.array([est.std_n for _, est in available], dtype=float)
+    biases = np.array([est.dc_offset_n for _, est in available], dtype=float)
+    max_abs = np.array([est.max_abs_n for _, est in available], dtype=float)
+    disp_limits = np.array([est.disp_max_mm for _, est in available], dtype=float)
+    sample_total = int(sum(est.sample_count for _, est in available))
+
+    print(
+        "  replicates={} | median std={:.5f} N | mean std={:.5f} N | max abs noise={:.5f} N".format(
+            len(available),
+            float(np.median(stds)),
+            float(np.mean(stds)),
+            float(np.max(max_abs)),
+        )
+    )
+    print(
+        "  bias median={:.5f} N | bias range=({:.5f}, {:.5f}) N".format(
+            float(np.median(biases)),
+            float(np.min(biases)),
+            float(np.max(biases)),
+        )
+    )
+    print(
+        "  total noise samples={} | max disp used={:.3f} mm".format(
+            sample_total,
+            float(np.max(disp_limits)),
+        )
+    )
+    print()
 
 
 def _print_summary_totals(dataset_stem: str, summary: list[tuple[str, int]]) -> None:

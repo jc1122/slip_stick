@@ -1,22 +1,20 @@
 # Progress
 
 ## Recent updates
-- Default Savitzky–Golay baseline window now spans 50% of the trimmed trace
-  (minimum 4 s) for better detrending of long runs.
-- Savitzky–Golay smoothing now relies directly on SciPy, removing the custom
-  fallback implementation.
-- CLI prints a per-dataset spike count summary (per replicate and total) and can
-  be redirected to text files for archival together with plots.
-- CSV parser now keeps embedded decimal commas even when fields are
-  inconsistently quoted, restoring complete replicate traces (e.g. T2EN data).
-- Plots render force/baseline vs displacement and were regenerated for all
-  datasets after the parser fix.
+- Instrumental noise estimation added (early window detrending + FFT); datasets
+  now use a common instrument band. A zero‑phase 4th‑order Butterworth low‑pass
+  filter is applied before baseline fitting and spike detection.
+- Defaults updated: reporting in `cN / 25 mm`, threshold 1.4 cN/25 mm. Width
+  normalisation is configurable (collection vs report width).
+- Publication-grade plotting style (consistent palette, dataset suptitles,
+  residual panel for noise, unit-aware axes).
+- CLI prints dataset noise summaries (bias/std/range) and spike counts.
 
 ## Current status
-🟢 Ready for ad-hoc use. The CLI works on the provided CSV format with default
-parameters and prints per-replicate spike summaries.
+🟢 Ready for ad‑hoc and publication workflows. The CLI denoises, scales units,
+and produces replicates’ figures and summaries in consistent, paper‑ready form.
 
 ## Open considerations
-- Confirm performance on very long runs or replicates with sparse data.
-- Validate plotting output once matplotlib is installed.
-- Decide later whether exporting results to a file format is necessary.
+- Validate instrument band stability across future sessions and rigs; allow
+  persisted profiles when needed.
+- Consider exporting machine‑readable outputs (CSV/JSON) and vector plots (PDF/SVG).

@@ -8,15 +8,17 @@
   path supplied via `--input`.
 
 ## Processing pattern
-1. Load the CSV with a tiny custom parser that normalises decimal commas and
-   groups columns into replicates.
-2. Estimate the sampling rate from time differences to derive the Savitzky–Golay
-   window length from seconds.
-3. Restrict samples to the displacement window, smooth the force trace, subtract
-   the baseline, and locate residual peaks higher than the threshold.
-4. Collapse contiguous exceedances to a single spike event and print the summary.
-5. When requested, render PNG plots showing force/baseline and residual traces
-   with spike markers.
+1. Load the CSV with a custom parser that preserves decimal commas and groups
+   time/force/displacement columns into replicates.
+2. Characterise instrumental noise from the early displacement window; estimate
+   the dominant band via FFT; derive a dataset‑level peak and apply a zero‑phase
+   Butterworth low‑pass filter to all replicates.
+3. Estimate sampling rate from time deltas; set a long Savitzky–Golay window in
+   seconds (converted to samples) to compute the baseline.
+4. Restrict analysis to the displacement window; compute residuals; detect
+   absolute excursions above the threshold and group contiguous exceedances.
+5. Report peak sample per group; optionally render publication‑grade PNG plots
+   showing filtered force and baseline plus the residual with threshold lines.
 
 ## Operating constraints
 - Assumes the CSV export uses the standard three-row header and comma decimals.

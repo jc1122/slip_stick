@@ -11,10 +11,28 @@ from pathlib import Path
 from typing import Generator, List, Sequence
 
 import numpy as np
-from scipy.signal import savgol_filter
+from scipy.signal import butter, filtfilt, savgol_filter
 
 try:  # Plotting is optional; only enabled when matplotlib is present.
     import matplotlib.pyplot as plt  # type: ignore
+    from matplotlib import rcParams
+
+    _PLOT_STYLE = {
+        "figure.figsize": (10, 6),
+        "axes.titlesize": 14,
+        "axes.labelsize": 12,
+        "axes.titleweight": "semibold",
+        "font.family": "sans-serif",
+        "font.sans-serif": ["DejaVu Sans", "Arial", "Helvetica"],
+        "legend.fontsize": 11,
+        "xtick.labelsize": 11,
+        "ytick.labelsize": 11,
+        "lines.linewidth": 1.5,
+        "axes.grid": True,
+        "grid.alpha": 0.2,
+    }
+
+    rcParams.update(_PLOT_STYLE)
 except Exception:  # pragma: no cover - optional dependency
     plt = None
 
@@ -53,6 +71,8 @@ class NoiseEstimate:
     sample_count: int
     disp_max_mm: float
     time_span_s: float
+    sample_rate_hz: float | None
+    noise_peak_hz: float | None
     raw_force: np.ndarray = field(repr=False)
     baseline_force: np.ndarray = field(repr=False)
     residual_force: np.ndarray = field(repr=False)
@@ -88,8 +108,33 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     dataset_stem = dataset_path.stem
 
+    collection_width_mm = (
+        args.collection_width_mm if args.collection_width_mm and args.collection_width_mm > 0 else 90.0
+    )
+    report_width_mm = (
+        args.report_width_mm if args.report_width_mm and args.report_width_mm > 0 else collection_width_mm
+    )
+    force_scale = report_width_mm / collection_width_mm if collection_width_mm > 0 else 1.0
+    unit_choice = args.report_unit.lower()
+    unit_scale = 100.0 if unit_choice == "cn" else 1.0
+    unit_symbol = "cN" if unit_choice == "cn" else "N"
+    force_unit_label = f"{unit_symbol} / {report_width_mm:g} mm"
+
+    scaled_replicates: list[Replicate] = []
+    for replicate in replicates:
+        scaled_replicates.append(
+            Replicate(
+                rep_id=replicate.rep_id,
+                time_s=replicate.time_s,
+                force_n=replicate.force_n * force_scale,
+                disp_mm=replicate.disp_mm,
+            )
+        )
+    replicates = scaled_replicates
+
     summary: list[tuple[str, int]] = []
     noise_summary: list[tuple[str, NoiseEstimate | None]] = []
+    replicate_entries: list[tuple[Replicate, NoiseEstimate | None]] = []
 
     for replicate in replicates:
         noise_estimate = estimate_instrumental_noise(
@@ -103,10 +148,60 @@ def main(argv: Sequence[str] | None = None) -> int:
         noise_summary.append((replicate.rep_id, noise_estimate))
         if noise_plot_dir is not None and plt is not None and noise_estimate is not None:
             noise_out = noise_plot_dir / f"{dataset_stem}_{replicate.rep_id}_noise.png"
-            _save_noise_plot(noise_out, replicate.rep_id, noise_estimate)
+            _save_noise_plot(
+                noise_out,
+                dataset_stem,
+                replicate.rep_id,
+                noise_estimate,
+                force_unit_label=force_unit_label,
+                value_scale=unit_scale,
+            )
+        replicate_entries.append((replicate, noise_estimate))
+
+    common_peak_hz: float | None = None
+    if args.instrument_peak_hz is not None and args.instrument_peak_hz > 0:
+        common_peak_hz = float(args.instrument_peak_hz)
+    else:
+        peak_values = [est.noise_peak_hz for _, est in replicate_entries if est and est.noise_peak_hz]
+        if peak_values:
+            common_peak_hz = float(np.median(peak_values))
+
+    base_cutoff_hz: float | None = None
+    if args.instrument_cutoff_hz is not None and args.instrument_cutoff_hz > 0:
+        base_cutoff_hz = float(args.instrument_cutoff_hz)
+    elif common_peak_hz is not None:
+        factor = args.instrument_cutoff_factor
+        if factor <= 0:
+            factor = 0.8
+        base_cutoff_hz = common_peak_hz * factor
+
+    for replicate, noise_estimate in replicate_entries:
+        analysis_replicate = replicate
+        effective_cutoff: float | None = None
+
+        sample_rate = _estimate_sampling_rate(replicate.time_s)
+        if base_cutoff_hz is not None and sample_rate is not None and sample_rate > 0 and replicate.force_n.size >= 8:
+            nyquist = 0.5 * float(sample_rate)
+            cutoff = min(base_cutoff_hz, nyquist * 0.95)
+            if cutoff > 0 and cutoff < nyquist:
+                normalized_cutoff = cutoff / nyquist
+                try:
+                    b, a = butter(4, normalized_cutoff, btype="low", analog=False)
+                    padlen = 3 * max(len(a), len(b))
+                    if replicate.force_n.size > padlen:
+                        filtered_force = filtfilt(b, a, replicate.force_n)
+                        analysis_replicate = Replicate(
+                            rep_id=replicate.rep_id,
+                            time_s=replicate.time_s,
+                            force_n=np.asarray(filtered_force, dtype=float),
+                            disp_mm=replicate.disp_mm,
+                        )
+                        effective_cutoff = float(cutoff)
+                except ValueError:
+                    pass
 
         result = _analyse_replicate(
-            replicate,
+            analysis_replicate,
             displacement_window=(args.disp_min, args.disp_max),
             window_seconds=args.window_seconds,
             polyorder=args.polyorder,
@@ -119,6 +214,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                 [],
                 args.threshold,
                 noise_estimate=noise_estimate,
+                filter_cutoff_hz=effective_cutoff,
+                instrument_peak_hz=common_peak_hz,
+                force_unit_label=force_unit_label,
+                unit_scale=unit_scale,
             )
             summary.append((replicate.rep_id, 0))
             continue
@@ -129,17 +228,42 @@ def main(argv: Sequence[str] | None = None) -> int:
             result.spikes,
             args.threshold,
             noise_estimate=noise_estimate,
+            filter_cutoff_hz=effective_cutoff,
+            instrument_peak_hz=common_peak_hz,
+            force_unit_label=force_unit_label,
+            unit_scale=unit_scale,
         )
         summary.append((replicate.rep_id, len(result.spikes)))
 
         if plot_dir is not None and plt is not None:
             out_path = plot_dir / f"{dataset_stem}_{replicate.rep_id}.png"
-            _save_plot(out_path, replicate.rep_id, result, args.threshold)
+            _save_plot(
+                out_path,
+                dataset_stem,
+                replicate.rep_id,
+                result,
+                args.threshold,
+                force_unit_label=force_unit_label,
+                value_scale=unit_scale,
+            )
 
-    _print_noise_totals(dataset_stem, noise_summary)
+    _print_noise_totals(
+        dataset_stem,
+        noise_summary,
+        force_unit_label=force_unit_label,
+        unit_scale=unit_scale,
+        common_peak_hz=common_peak_hz,
+        common_cutoff_hz=base_cutoff_hz,
+    )
     if noise_plot_dir is not None and plt is not None:
         summary_out = noise_plot_dir / f"{dataset_stem}_noise_summary.png"
-        _save_noise_summary_plot(summary_out, dataset_stem, noise_summary)
+        _save_noise_summary_plot(
+            summary_out,
+            dataset_stem,
+            noise_summary,
+            force_unit_label=force_unit_label,
+            value_scale=unit_scale,
+        )
     _print_summary_totals(dataset_stem, summary)
 
     return 0
@@ -162,7 +286,12 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument("--polyorder", type=int, default=3, help="Savitzky–Golay polynomial order.")
-    parser.add_argument("--threshold", type=float, default=0.05, help="Residual spike threshold (newtons).")
+    parser.add_argument(
+        "--threshold",
+        type=float,
+        default=0.014,
+        help="Residual spike threshold in force units (defaults to 0.014 in the chosen reporting scale).",
+    )
     parser.add_argument(
         "--plot-dir",
         help=(
@@ -209,6 +338,54 @@ def _build_parser() -> argparse.ArgumentParser:
             "Absolute force (N) that marks the onset of specimen engagement. The noise window excludes "
             "samples at or above this force."
         ),
+    )
+    parser.add_argument(
+        "--instrument-peak-hz",
+        type=float,
+        default=None,
+        help=(
+            "Optional global instrumental noise peak (Hz). When provided, overrides replicate-level peak"
+            " detection."
+        ),
+    )
+    parser.add_argument(
+        "--instrument-cutoff-hz",
+        type=float,
+        default=None,
+        help=(
+            "Optional global low-pass cutoff (Hz) applied to every replicate before spike analysis."
+        ),
+    )
+    parser.add_argument(
+        "--instrument-cutoff-factor",
+        type=float,
+        default=0.8,
+        help=(
+            "Scaling factor applied to the common noise peak when deriving the low-pass cutoff (default 0.8)."
+        ),
+    )
+    parser.add_argument(
+        "--collection-width-mm",
+        type=float,
+        default=90.0,
+        help=(
+            "Sample width in millimetres. Forces from the CSV are assumed to be normalised to 90 mm; "
+            "the script rescales them linearly to this width for reporting and plotting."
+        ),
+    )
+    parser.add_argument(
+        "--report-width-mm",
+        type=float,
+        default=25.0,
+        help=(
+            "Reporting width in millimetres. Forces are normalised to this width for summaries and plots."
+        ),
+    )
+    parser.add_argument(
+        "--report-unit",
+        choices=["N", "cN"],
+        default="cN",
+        help="Unit to use when reporting forces. Choose 'cN' to scale values by 100 for readability.",
     )
     return parser
 
@@ -447,7 +624,8 @@ def estimate_instrumental_noise(
         step = np.median(np.abs(delta_disp[delta_disp != 0])) if delta_disp.size else 0.0
         if step <= 0.0:
             step = disp_span / max(force_segment.size - 1, 1)
-        window_disp = max(disp_span * 0.25, step)
+        # Use a long SavGol window (≈ 50% of the displacement span) to better remove slow ramps.
+        window_disp = max(disp_span * 0.5, step)
         window_samples = int(round(window_disp / step)) if step > 0 else force_segment.size
         window_samples = max(window_samples, polyorder + 1, 3)
         if window_samples % 2 == 0:
@@ -476,6 +654,19 @@ def estimate_instrumental_noise(
         else 0.0
     )
 
+    sample_rate = _estimate_sampling_rate(time_segment)
+    noise_peak_hz: float | None = None
+    if sample_rate is not None and residual_force.size >= 8:
+        centered = residual_force - np.mean(residual_force)
+        spectrum = np.fft.rfft(centered)
+        freqs = np.fft.rfftfreq(centered.size, d=1.0 / sample_rate)
+        if spectrum.size > 1:
+            power = np.abs(spectrum)
+            power[0] = 0.0  # ignore DC
+            peak_index = int(np.argmax(power)) if np.any(power) else 0
+            if peak_index > 0 and peak_index < freqs.size:
+                noise_peak_hz = float(freqs[peak_index])
+
     return NoiseEstimate(
         std_n=std,
         dc_offset_n=offset,
@@ -483,6 +674,8 @@ def estimate_instrumental_noise(
         sample_count=int(force_segment.size),
         disp_max_mm=disp_max_used,
         time_span_s=time_span,
+        sample_rate_hz=float(sample_rate) if sample_rate is not None else None,
+        noise_peak_hz=noise_peak_hz,
         raw_force=np.asarray(force_segment, dtype=float),
         baseline_force=np.asarray(baseline_force, dtype=float),
         residual_force=np.asarray(residual_force, dtype=float),
@@ -627,37 +820,60 @@ def _print_summary(
     threshold: float,
     *,
     noise_estimate: NoiseEstimate | None,
+    filter_cutoff_hz: float | None,
+    instrument_peak_hz: float | None,
+    force_unit_label: str,
+    unit_scale: float,
 ) -> None:
     print(f"Replicate {rep_id}")
-    header_bits = [f"samples={sample_count}", f"threshold={threshold:.3f} N"]
+    display_threshold = threshold * unit_scale
+    header_bits = [f"samples={sample_count}", f"threshold={display_threshold:.3f} {force_unit_label}"]
     print("  " + " | ".join(header_bits))
     if noise_estimate is not None:
-        print(
-            "  noise: std={:.5f} N | bias={:.5f} N | max_abs={:.5f} N | n={} | disp≤{:.3f} mm | span={:.3f} s".format(
-                noise_estimate.std_n,
-                noise_estimate.dc_offset_n,
-                noise_estimate.max_abs_n,
-                noise_estimate.sample_count,
-                noise_estimate.disp_max_mm,
-                noise_estimate.time_span_s,
-            )
+        peak_fragment = (
+            f" | peak≈{noise_estimate.noise_peak_hz:.2f} Hz" if noise_estimate.noise_peak_hz is not None else ""
         )
+        std_display = noise_estimate.std_n * unit_scale
+        bias_display = noise_estimate.dc_offset_n * unit_scale
+        max_display = noise_estimate.max_abs_n * unit_scale
+        line = (
+            f"  noise: std={std_display:.5f} {force_unit_label} | "
+            f"bias={bias_display:.5f} {force_unit_label} | "
+            f"max_abs={max_display:.5f} {force_unit_label} | "
+            f"n={noise_estimate.sample_count} | disp≤{noise_estimate.disp_max_mm:.3f} mm | span={noise_estimate.time_span_s:.3f} s"
+        )
+        print(line + peak_fragment)
+    if filter_cutoff_hz is not None:
+        if instrument_peak_hz is not None:
+            print(
+                f"  denoised: low-pass filter fc={filter_cutoff_hz:.2f} Hz (instrument peak ≈ {instrument_peak_hz:.2f} Hz)"
+            )
+        else:
+            print(f"  denoised: low-pass filter fc={filter_cutoff_hz:.2f} Hz")
+    elif instrument_peak_hz is not None:
+        print(f"  instrument peak ≈ {instrument_peak_hz:.2f} Hz (filter not applied)")
     if not spikes:
         print("  No spikes above threshold in the selected displacement window.\n")
         return
     for spike in spikes:
+        residual_display = spike.residual_n * unit_scale
         print(
-            "  time={:.3f} s | disp={:.3f} mm | residual={:.4f} N (idx {})".format(
-                spike.time_s,
-                spike.disp_mm,
-                spike.residual_n,
-                spike.index,
-            )
+            f"  time={spike.time_s:.3f} s | disp={spike.disp_mm:.3f} mm | "
+            f"residual={residual_display:.4f} {force_unit_label} (idx {spike.index})"
         )
     print()
 
 
-def _save_plot(out_path: Path, rep_id: str, result: DetectionResult, threshold: float) -> None:
+def _save_plot(
+    out_path: Path,
+    dataset_stem: str,
+    rep_id: str,
+    result: DetectionResult,
+    threshold: float,
+    *,
+    force_unit_label: str,
+    value_scale: float,
+) -> None:
     assert plt is not None  # plotting gated by caller
 
     spike_indices = [sp.index for sp in result.spikes]
@@ -665,75 +881,108 @@ def _save_plot(out_path: Path, rep_id: str, result: DetectionResult, threshold: 
 
     fig, (ax_force, ax_residual) = plt.subplots(2, 1, sharex=True, figsize=(10, 6))
 
-    ax_force.plot(result.disp, result.force, label="force", color="tab:blue", linewidth=1.1)
+    force_series = result.force * value_scale
+    baseline_series = result.baseline * value_scale
+    residual_series = result.residual * value_scale
+    threshold_display = threshold * value_scale
+
+    ax_force.plot(result.disp, force_series, label="filtered force", color="#1f77b4")
     ax_force.plot(
         result.disp,
-        result.baseline,
+        baseline_series,
         label="baseline",
-        color="tab:orange",
+        color="#ff7f0e",
         linestyle="--",
-        linewidth=1.0,
     )
     if spike_indices:
-        ax_force.scatter(spike_disp, result.force[spike_indices], color="tab:red", marker="x", label="spikes")
-    ax_force.set_ylabel("Force (N)")
-    ax_force.set_title(f"Replicate {rep_id}")
+        ax_force.scatter(spike_disp, force_series[spike_indices], color="#d62728", marker="x", label="spikes")
+    ax_force.set_ylabel(f"Force ({force_unit_label})")
+    ax_force.set_title("Force vs displacement")
     ax_force.legend(loc="upper left")
 
-    ax_residual.plot(result.disp, result.residual, color="tab:red", label="residual", linewidth=1.0)
-    ax_residual.axhline(threshold, color="tab:gray", linestyle="--", linewidth=0.8, label="±threshold")
-    ax_residual.axhline(-threshold, color="tab:gray", linestyle="--", linewidth=0.8)
+    ax_residual.plot(result.disp, residual_series, color="#9467bd", label="residual")
+    ax_residual.axhline(threshold_display, color="0.3", linestyle="--", linewidth=1.0, label="threshold")
+    ax_residual.axhline(-threshold_display, color="0.3", linestyle="--", linewidth=1.0)
     if spike_indices:
-        ax_residual.scatter(spike_disp, result.residual[spike_indices], color="tab:red", marker="x")
+        ax_residual.scatter(spike_disp, residual_series[spike_indices], color="#d62728", marker="x")
     ax_residual.set_xlabel("Displacement (mm)")
-    ax_residual.set_ylabel("Residual (N)")
+    ax_residual.set_ylabel(f"Residual ({force_unit_label})")
     ax_residual.legend(loc="upper left")
 
-    fig.tight_layout()
+    fig.suptitle(f"{dataset_stem} – replicate {rep_id}", fontsize=15, fontweight="semibold")
+    fig.tight_layout(rect=[0, 0, 1, 0.97])
     fig.savefig(out_path, dpi=150)
     plt.close(fig)
 
 
-def _save_noise_plot(out_path: Path, rep_id: str, noise: NoiseEstimate) -> None:
+def _save_noise_plot(
+    out_path: Path,
+    dataset_stem: str,
+    rep_id: str,
+    noise: NoiseEstimate,
+    *,
+    force_unit_label: str,
+    value_scale: float,
+) -> None:
     assert plt is not None
 
-    fig = plt.figure(figsize=(9, 6))
-    gs = fig.add_gridspec(2, 1, height_ratios=[2, 1])
+    fig = plt.figure(figsize=(9, 8))
+    gs = fig.add_gridspec(3, 1, height_ratios=[2, 1, 1])
+
+    raw_series = noise.raw_force * value_scale
+    baseline_series = noise.baseline_force * value_scale
+    residual_series = noise.residual_force * value_scale
 
     ax_series = fig.add_subplot(gs[0])
-    ax_series.plot(noise.disp_mm, noise.raw_force, label="raw force", color="tab:blue", linewidth=1.0)
+    ax_series.plot(noise.disp_mm, raw_series, label="raw force", color="#1f77b4")
     ax_series.plot(
         noise.disp_mm,
-        noise.baseline_force,
+        baseline_series,
         label="Savgol baseline",
-        color="tab:orange",
+        color="#ff7f0e",
         linestyle="--",
-        linewidth=1.0,
     )
-    ax_series.axhline(noise.dc_offset_n, color="tab:green", linestyle=":", linewidth=0.9, label="baseline mean")
-    ax_series.axhline(0.0, color="tab:gray", linestyle="--", linewidth=0.8)
-    ax_series.set_ylabel("Force (N)")
+    ax_series.axhline(0.0, color="0.3", linestyle="--", linewidth=1.0)
+    ax_series.set_ylabel(f"Force ({force_unit_label})")
+    ax_series.set_xlabel("Displacement (mm)")
     ax_series.set_title(f"Replicate {rep_id} noise window")
     ax_series.legend(loc="upper right")
 
-    ax_hist = fig.add_subplot(gs[1])
-    residual = noise.residual_force
-    bins = min(60, max(10, int(np.sqrt(max(residual.size, 1)))))
-    ax_hist.hist(residual, bins=bins, color="tab:red", alpha=0.75)
-    ax_hist.axvline(0.0, color="tab:gray", linestyle="--", linewidth=0.8)
-    ax_hist.set_xlabel("Residual force (N)")
-    ax_hist.set_ylabel("Count")
-    ax_hist.set_title(
-        f"std={noise.std_n:.5f} N | max |noise|={noise.max_abs_n:.5f} N | baseline µ={noise.dc_offset_n:.5f} N"
-    )
+    ax_residual = fig.add_subplot(gs[1], sharex=ax_series)
+    ax_residual.plot(noise.disp_mm, residual_series, color="#9467bd", label="residual")
+    ax_residual.axhline(0.0, color="0.3", linestyle="--", linewidth=1.0)
+    ax_residual.set_ylabel(f"Residual ({force_unit_label})")
+    ax_residual.set_xlabel("Displacement (mm)")
+    ax_residual.set_title("Detrended force")
 
-    fig.tight_layout()
+    ax_hist = fig.add_subplot(gs[2])
+    bins = min(60, max(10, int(np.sqrt(max(residual_series.size, 1)))))
+    ax_hist.hist(residual_series, bins=bins, color="#d62728", alpha=0.75)
+    ax_hist.axvline(0.0, color="0.3", linestyle="--", linewidth=1.0)
+    ax_hist.set_xlabel(f"Residual force ({force_unit_label})")
+    ax_hist.set_ylabel("Count")
+    if noise.noise_peak_hz is not None:
+        ax_hist.set_title(
+            f"std={noise.std_n * value_scale:.5f} {force_unit_label} | max |noise|={noise.max_abs_n * value_scale:.5f} {force_unit_label} | peak≈{noise.noise_peak_hz:.2f} Hz"
+        )
+    else:
+        ax_hist.set_title(
+            f"std={noise.std_n * value_scale:.5f} {force_unit_label} | max |noise|={noise.max_abs_n * value_scale:.5f} {force_unit_label}"
+        )
+
+    fig.suptitle(dataset_stem, y=0.98, fontsize=12)
+    fig.tight_layout(rect=[0, 0, 1, 0.96])
     fig.savefig(out_path, dpi=150)
     plt.close(fig)
 
 
 def _save_noise_summary_plot(
-    out_path: Path, dataset_stem: str, noise_entries: list[tuple[str, NoiseEstimate | None]]
+    out_path: Path,
+    dataset_stem: str,
+    noise_entries: list[tuple[str, NoiseEstimate | None]],
+    *,
+    force_unit_label: str,
+    value_scale: float,
 ) -> None:
     assert plt is not None
 
@@ -742,59 +991,70 @@ def _save_noise_summary_plot(
         return
 
     rep_ids = [rep_id for rep_id, _ in available]
-    biases = np.array([est.dc_offset_n for _, est in available], dtype=float)
-    stds = np.array([est.std_n for _, est in available], dtype=float)
-    max_abs = np.array([est.max_abs_n for _, est in available], dtype=float)
+    biases = np.array([est.dc_offset_n for _, est in available], dtype=float) * value_scale
+    stds = np.array([est.std_n for _, est in available], dtype=float) * value_scale
+    max_abs = np.array([est.max_abs_n for _, est in available], dtype=float) * value_scale
 
     width = max(8.0, len(rep_ids) * 0.7)
     fig, (ax_bias, ax_std) = plt.subplots(2, 1, figsize=(width, 6), sharex=True)
 
     x = np.arange(len(rep_ids))
 
-    ax_bias.bar(x, biases, color="tab:blue")
-    ax_bias.axhline(0.0, color="tab:gray", linestyle="--", linewidth=0.8)
-    ax_bias.set_ylabel("Bias (N)")
+    ax_bias.bar(x, biases, color="#1f77b4")
+    ax_bias.axhline(0.0, color="0.3", linestyle="--", linewidth=1.0)
+    ax_bias.set_ylabel(f"Bias ({force_unit_label})")
     ax_bias.set_title(f"Instrument bias per replicate – {dataset_stem}")
 
-    ax_std.bar(x, stds, color="tab:orange", label="std dev")
-    ax_std.scatter(x, max_abs, color="tab:red", marker="x", label="max |noise|")
-    ax_std.set_ylabel("Noise (N)")
+    ax_std.bar(x, stds, color="#ff7f0e", label="std dev")
+    ax_std.scatter(x, max_abs, color="#d62728", marker="x", label="max |noise|")
+    ax_std.set_ylabel(f"Noise ({force_unit_label})")
     ax_std.set_title("Noise spread and extrema")
     ax_std.legend(loc="upper right")
     ax_std.set_xticks(x)
     ax_std.set_xticklabels(rep_ids, rotation=45, ha="right")
 
-    fig.tight_layout()
+    fig.suptitle(dataset_stem, fontsize=15, fontweight="semibold")
+    fig.tight_layout(rect=[0, 0, 1, 0.97])
     fig.savefig(out_path, dpi=150)
     plt.close(fig)
 
 
-def _print_noise_totals(dataset_stem: str, noise_entries: list[tuple[str, NoiseEstimate | None]]) -> None:
+def _print_noise_totals(
+    dataset_stem: str,
+    noise_entries: list[tuple[str, NoiseEstimate | None]],
+    *,
+    force_unit_label: str,
+    unit_scale: float,
+    common_peak_hz: float | None,
+    common_cutoff_hz: float | None,
+) -> None:
     print(f"Noise estimates for {dataset_stem}")
     available = [(rep_id, est) for rep_id, est in noise_entries if est is not None]
     if not available:
         print("  No noise window samples found.\n")
         return
 
-    stds = np.array([est.std_n for _, est in available], dtype=float)
-    biases = np.array([est.dc_offset_n for _, est in available], dtype=float)
-    max_abs = np.array([est.max_abs_n for _, est in available], dtype=float)
+    stds = np.array([est.std_n for _, est in available], dtype=float) * unit_scale
+    biases = np.array([est.dc_offset_n for _, est in available], dtype=float) * unit_scale
+    max_abs = np.array([est.max_abs_n for _, est in available], dtype=float) * unit_scale
     disp_limits = np.array([est.disp_max_mm for _, est in available], dtype=float)
     sample_total = int(sum(est.sample_count for _, est in available))
 
     print(
-        "  replicates={} | median std={:.5f} N | mean std={:.5f} N | max abs noise={:.5f} N".format(
+        "  replicates={} | median std={:.5f} {unit} | mean std={:.5f} {unit} | max abs noise={:.5f} {unit}".format(
             len(available),
             float(np.median(stds)),
             float(np.mean(stds)),
             float(np.max(max_abs)),
+            unit=force_unit_label,
         )
     )
     print(
-        "  bias median={:.5f} N | bias range=({:.5f}, {:.5f}) N".format(
+        "  bias median={:.5f} {unit} | bias range=({:.5f}, {:.5f}) {unit}".format(
             float(np.median(biases)),
             float(np.min(biases)),
             float(np.max(biases)),
+            unit=force_unit_label,
         )
     )
     print(
@@ -803,6 +1063,11 @@ def _print_noise_totals(dataset_stem: str, noise_entries: list[tuple[str, NoiseE
             float(np.max(disp_limits)),
         )
     )
+    if common_peak_hz is not None:
+        second_line = f"  instrument peak≈{common_peak_hz:.2f} Hz"
+        if common_cutoff_hz is not None:
+            second_line += f" | applied cutoff≈{common_cutoff_hz:.2f} Hz"
+        print(second_line)
     print()
 
 

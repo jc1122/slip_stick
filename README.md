@@ -165,22 +165,22 @@ Naming & units
 
 ```mermaid
 flowchart TD
-  A[Load CSV -> load_replicates()] --> B{Have replicates?}
-  B -- No --> Z[Exit: no replicates found]
-  B -- Yes --> C[Force rescaling to reporting width]
+  A[Load CSV → load_replicates()] --> B{Have replicates?}
+  B -->|No| Z[Exit: no replicates found]
+  B -->|Yes| C[Force rescaling to reporting width]
   C --> D[Estimate instrumental noise per replicate]
   D --> E[Compute dataset-level peak & suggested cutoff]
   E --> F{Apply low-pass filter?}
-  F -- Yes --> G[Apply Butterworth denoise (zero-phase)]
-  F -- No --> G[Skip denoise]
+  F -->|Yes| G[Apply Butterworth denoise (zero-phase)]
+  F -->|No| G[Skip denoise]
   G --> H[Analyse each replicate]
-  H --> I[Compute Savitzky-Golay baseline and residual]
+  H --> I[Compute Savitzky–Golay baseline and residual]
   I --> J[Detect spikes and compute spectra]
   J --> K[Print replicate summaries]
   K --> L[Aggregate noise & dataset summaries]
   L --> M{Plots requested?}
-  M -- Yes --> N[Render and save plots (analysis, noise, spectra)]
-  M -- No --> O[No plots]
+  M -->|Yes| N[Render and save plots (analysis, noise, spectra)]
+  M -->|No| O[No plots]
   N --> P[Optionally save spectra summary]
   O --> P
   P --> Q[Exit (0): summaries on stdout]

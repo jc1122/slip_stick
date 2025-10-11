@@ -4,18 +4,12 @@ import argparse
 import importlib.util
 import locale
 import sys
-from dataclasses import replace
 from pathlib import Path
 from typing import Any, Sequence
 
 import numpy as np
-from scipy.signal import butter, filtfilt
 
-from .core import (
-    _analyse_replicate,
-    _estimate_sampling_rate,
-    estimate_instrumental_noise,
-)
+from .core import _analyse_replicate, estimate_instrumental_noise, process_replicates
 from .io import load_replicates
 from .models import NoiseEstimate, Replicate, Spike
 from .plotting import (
@@ -193,33 +187,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             factor = 0.8
         base_cutoff_hz = common_peak_hz * factor
 
-    for replicate, noise_estimate in replicate_entries:
-        analysis_replicate = replicate
-        effective_cutoff: float | None = None
+    processed_replicates = process_replicates(
+        replicates, force_scale=1.0, cutoff_hz=base_cutoff_hz
+    )
+    replicate_map = {rep.rep_id: rep for rep in processed_replicates}
 
-        sample_rate = _estimate_sampling_rate(replicate.time_s)
-        if (
-            base_cutoff_hz is not None
-            and sample_rate is not None
-            and sample_rate > 0
-            and replicate.force_n.size >= 8
-        ):
-            nyquist = 0.5 * float(sample_rate)
-            cutoff = min(base_cutoff_hz, nyquist * 0.95)
-            if cutoff > 0 and cutoff < nyquist:
-                normalized_cutoff = cutoff / nyquist
-                try:
-                    b, a = butter(4, normalized_cutoff, btype="low", analog=False)
-                    padlen = 3 * max(len(a), len(b))
-                    if replicate.force_n.size > padlen:
-                        filtered_force = filtfilt(b, a, replicate.force_n)
-                        analysis_replicate = replace(
-                            replicate,
-                            force_n=np.asarray(filtered_force, dtype=float),
-                        )
-                        effective_cutoff = float(cutoff)
-                except ValueError:
-                    pass
+    for replicate, noise_estimate in replicate_entries:
+        analysis_replicate = replicate_map.get(replicate.rep_id, replicate)
+        effective_cutoff: float | None = base_cutoff_hz
 
         result = _analyse_replicate(
             analysis_replicate,

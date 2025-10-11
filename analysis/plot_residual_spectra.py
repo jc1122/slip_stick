@@ -4,20 +4,20 @@
 from __future__ import annotations
 
 import argparse
-from dataclasses import replace
 from math import ceil
 from pathlib import Path
 from typing import Iterable
 
 import numpy as np
 from matplotlib import pyplot as plt
-from scipy.signal import butter, filtfilt, periodogram
+from scipy.signal import periodogram
 
 from slipstick.cli import DEFAULT_NOISE_FORCE_ONSET_N, DEFAULT_THRESHOLD_FORCE_N
 from slipstick.core import (
     _analyse_replicate,
     _estimate_sampling_rate,
     estimate_instrumental_noise,
+    process_replicates,
 )
 from slipstick.io import load_replicates
 
@@ -34,24 +34,6 @@ SPIKE_BANDS: list[tuple[str, float, float]] = [
     ("harmonic ≈8.4 Hz", 8.30, 8.50),
     ("harmonic ≈9.3 Hz", 9.20, 9.40),
 ]
-
-
-def _scaled_replicates(
-    dataset_path: Path,
-    *,
-    collection_width_mm: float,
-    report_width_mm: float,
-) -> tuple[list, float]:
-    replicates = load_replicates(dataset_path)
-    if not replicates:
-        return [], 1.0
-
-    collection = max(collection_width_mm, 1.0)
-    report = report_width_mm if report_width_mm > 0 else collection
-    force_scale = report / collection
-    for rep in replicates:
-        rep.force_n = rep.force_n * force_scale
-    return replicates, force_scale
 
 
 def _common_cutoff(
@@ -82,21 +64,9 @@ def _common_cutoff(
 def _analyse_residual(
     rep,
     *,
-    cutoff_hz: float | None,
     force_scale: float,
 ) -> tuple[np.ndarray, np.ndarray, float | None, float, int]:
     analysis_rep = rep
-    fs_full = _estimate_sampling_rate(rep.time_s)
-    if cutoff_hz and fs_full and fs_full > 0 and rep.force_n.size >= 8:
-        nyquist = 0.5 * float(fs_full)
-        cutoff = min(cutoff_hz, nyquist * 0.95)
-        if 0 < cutoff < nyquist:
-            b, a = butter(4, cutoff / nyquist, btype="low")
-            padlen = 3 * max(len(a), len(b))
-            if rep.force_n.size > padlen:
-                filtered_force = filtfilt(b, a, rep.force_n)
-                analysis_rep = replace(rep, force_n=np.asarray(filtered_force))
-
     result = _analyse_replicate(
         analysis_rep,
         displacement_window=(50.0, 200.0),
@@ -128,13 +98,19 @@ def plot_residual_spectra(
     band_min: float,
     band_max: float,
 ) -> None:
-    replicates, force_scale = _scaled_replicates(
-        dataset_path, collection_width_mm=90.0, report_width_mm=25.0
-    )
+    replicates = load_replicates(dataset_path)
     if not replicates:
         raise SystemExit(f"No replicates found in {dataset_path}")
 
+    collection_width_mm = 90.0
+    report_width_mm = 25.0
+    force_scale = report_width_mm / collection_width_mm
+
     cutoff = _common_cutoff(replicates, force_scale=force_scale, band_factor=0.8)
+
+    processed_replicates = process_replicates(
+        replicates, force_scale=force_scale, cutoff_hz=cutoff
+    )
 
     spectra: list[
         tuple[
@@ -147,9 +123,9 @@ def plot_residual_spectra(
             list[tuple[str, float, float, float]],
         ]
     ] = []
-    for rep in replicates:
+    for rep in processed_replicates:
         freqs, power, peak_freq, rms, spike_count = _analyse_residual(
-            rep, cutoff_hz=cutoff, force_scale=force_scale
+            rep, force_scale=force_scale
         )
         if freqs.size:
             total_power = float(np.sum(power)) if power.size else 0.0

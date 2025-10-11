@@ -1,22 +1,6 @@
-# Active context
+## Refactoring Opportunities
 
-## Current work focus
-The codebase is now a Python package (`slipstick`). The CLI entry point is `slipstick.cli`. The package now:
-- Estimates a dataset-level instrumental noise band from the early (1–5 mm)
-  window and applies zero‑phase low‑pass filtering.
-- Uses a long Savitzky–Golay window (50% of the trimmed trace, minimum 4 s)
-  to estimate the baseline, then detects residual peaks.
-- Normalises forces to `cN / 25 mm` for reporting; threshold defaults to
-  1.4 cN/25 mm.
-- Produces publication-ready plots with consistent styling and dataset labels.
-- Streams CSV rows to avoid duplicate parsing and rescales forces in place.
-- Generates plots in parallel (default four worker processes) and supports PDF/SVG.
-Summaries can be redirected to text files for archival alongside the plots.
-
-## Operating constraints
-- Assume the CSV layout documented in the project brief.
-- Keep the script dependency footprint minimal (NumPy and SciPy required).
-
-## Possible next steps
-- Expose alternative displacement windows or interpolation for sparse datasets.
-- Add machine-readable outputs (CSV/JSON) for downstream analysis.
+- **Duplicated Analysis Logic:** The core analysis logic in `_analyse_residual` in `analysis/plot_residual_spectra.py` is a slightly modified version of the logic in `_analyse_replicate` in `slipstick/core.py`. Both functions perform Savitzky-Golay filtering and then calculate the residual.
+- **Repeated Plotting Code:** The plotting code in `analysis/plot_residual_spectra.py` and `slipstick/plotting.py` shares similarities in how subplots are created, styled, and saved.
+- **Argument Parsing:** Both `analysis/plot_residual_spectra.py` and `slipstick/cli.py` have their own argument parsing logic using `argparse`. Many of the arguments are similar (e.g., file paths, filter parameters).
+- **Redundant Noise Estimation Logic:** The logic for estimating instrumental noise is present in both `analysis/plot_residual_spectra.py` (in `_common_cutoff`) and `slipstick/cli.py` (in the `main` function). Both call `estimate_instrumental_noise` from `slipstick/core.py` but then have their own logic for handling the results.

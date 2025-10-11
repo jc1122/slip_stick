@@ -1,11 +1,42 @@
 from __future__ import annotations
 
-from typing import List
+from dataclasses import replace
+from typing import Iterable, List
 
 import numpy as np
-from scipy.signal import find_peaks, periodogram, savgol_filter
+from scipy.signal import butter, filtfilt, find_peaks, periodogram, savgol_filter
 
 from .models import DetectionResult, NoiseEstimate, Replicate, Spike
+
+
+def process_replicates(
+    replicates: Iterable[Replicate],
+    *,
+    force_scale: float,
+    cutoff_hz: float | None,
+) -> list[Replicate]:
+    """Apply scaling and filtering to a list of replicates."""
+
+    processed_replicates: list[Replicate] = []
+    for rep in replicates:
+        analysis_rep = rep
+        if force_scale != 1.0:
+            analysis_rep = replace(rep, force_n=rep.force_n * force_scale)
+
+        fs_full = _estimate_sampling_rate(analysis_rep.time_s)
+        if cutoff_hz and fs_full and fs_full > 0 and analysis_rep.force_n.size >= 8:
+            nyquist = 0.5 * float(fs_full)
+            cutoff = min(cutoff_hz, nyquist * 0.95)
+            if 0 < cutoff < nyquist:
+                b, a = butter(4, cutoff / nyquist, btype="low")
+                padlen = 3 * max(len(a), len(b))
+                if analysis_rep.force_n.size > padlen:
+                    filtered_force = filtfilt(b, a, analysis_rep.force_n)
+                    analysis_rep = replace(
+                        analysis_rep, force_n=np.asarray(filtered_force)
+                    )
+        processed_replicates.append(analysis_rep)
+    return processed_replicates
 
 
 def estimate_instrumental_noise(

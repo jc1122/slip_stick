@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import argparse
-import importlib.util
 import locale
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Sequence
@@ -12,7 +10,12 @@ import numpy as np
 
 from .core import _analyse_replicate, estimate_instrumental_noise, process_replicates
 from .io import load_replicates
-from .models import DetectionResult, NoiseEstimate, Replicate, Spike
+from .models import DetectionResult, NoiseEstimate, Replicate
+from .output import (
+    print_dataset_summary,
+    print_noise_summary,
+    print_replicate_summary,
+)
 from .plotting import (
     _render_plot_jobs,
     _save_noise_plot,
@@ -21,7 +24,10 @@ from .plotting import (
     _save_residual_spectrum_plot,
     save_residual_spectra_summary,
 )
-from .utils import scale_force_value
+from .utils import (
+    ensure_matplotlib_available,
+    clamp_value,
+)
 
 # Configure numeric locale to support comma decimals when available.
 try:
@@ -64,11 +70,7 @@ def _ensure_plot_dir(dir_path: str | None, flag_name: str) -> Path | None:
     """Create a directory for saving plots, if matplotlib is available."""
     if not dir_path:
         return None
-    if importlib.util.find_spec("matplotlib") is None:
-        print(
-            f"matplotlib is required for plotting; skipping {flag_name} output.",
-            file=sys.stderr,
-        )
+    if not ensure_matplotlib_available(flag_name):
         return None
     path = Path(dir_path)
     path.mkdir(parents=True, exist_ok=True)
@@ -76,21 +78,17 @@ def _ensure_plot_dir(dir_path: str | None, flag_name: str) -> Path | None:
 
 
 def _build_plot_path(
-    base_dir: Path,
-    dataset_stem: str,
-    rep_id: str,
-    plot_type: str,
-    suffix: str
+    base_dir: Path, dataset_stem: str, rep_id: str, plot_type: str, suffix: str
 ) -> Path:
     """Build a standardized plot output path.
-    
+
     Args:
         base_dir: Base directory for plots.
         dataset_stem: Dataset file stem.
         rep_id: Replicate identifier.
         plot_type: Type of plot (e.g., 'noise', 'spectrum') or empty string.
         suffix: File extension (e.g., 'png', 'pdf').
-    
+
     Returns:
         Complete path for the plot file.
     """
@@ -142,13 +140,7 @@ def _create_cli_config(args: argparse.Namespace, dataset_path: Path) -> CliConfi
         args.noise_force_onset, default_n=DEFAULT_NOISE_FORCE_ONSET_N
     )
 
-    plot_workers = 4
-    try:
-        plot_workers = int(args.plot_workers)
-    except (TypeError, ValueError):
-        plot_workers = 4
-    if plot_workers <= 0:
-        plot_workers = 4
+    plot_workers = int(clamp_value(args.plot_workers, 1, default=4))
 
     plot_dir = _ensure_plot_dir(args.plot_dir, "--plot-dir")
     noise_plot_dir = _ensure_plot_dir(args.noise_plot_dir, "--noise-plot-dir")
@@ -159,11 +151,8 @@ def _create_cli_config(args: argparse.Namespace, dataset_path: Path) -> CliConfi
     spectra_summary_path: Path | None = None
     summary_arg = getattr(args, "spectra_summary", None)
     if summary_arg:
-        if importlib.util.find_spec("matplotlib") is None:
-            print(
-                "matplotlib is required for residual spectrum summaries; skipping --spectra-summary output.",
-                file=sys.stderr,
-            )
+        if not ensure_matplotlib_available("--spectra-summary"):
+            pass  # spectra_summary_path remains None
         else:
             spectra_summary_path = Path(summary_arg)
             spectra_summary_path.parent.mkdir(parents=True, exist_ok=True)
@@ -231,7 +220,7 @@ def _estimate_noise_for_replicates(
                 config.dataset_stem,
                 replicate.rep_id,
                 "noise",
-                config.plot_suffix
+                config.plot_suffix,
             )
             if config.plot_workers == 1:
                 _save_noise_plot(
@@ -269,7 +258,9 @@ def _analyse_replicates_and_plot(
     plot_jobs: list[tuple[str, tuple[Any, ...]]],
     args: argparse.Namespace,
 ) -> tuple[
-    list[tuple[str, int]], list[tuple[str, tuple[Any, ...]]], list[tuple[str, DetectionResult | None]]
+    list[tuple[str, int]],
+    list[tuple[str, tuple[Any, ...]]],
+    list[tuple[str, DetectionResult | None]],
 ]:
     summary: list[tuple[str, int]] = []
     result_entries: list[tuple[str, DetectionResult | None]] = []
@@ -285,7 +276,7 @@ def _analyse_replicates_and_plot(
             threshold=config.threshold_value,
         )
         if result is None:
-            _print_summary(
+            print_replicate_summary(
                 replicate.rep_id,
                 0,
                 [],
@@ -300,7 +291,7 @@ def _analyse_replicates_and_plot(
             result_entries.append((replicate.rep_id, None))
             continue
 
-        _print_summary(
+        print_replicate_summary(
             replicate.rep_id,
             result.time.size,
             result.spikes,
@@ -320,7 +311,7 @@ def _analyse_replicates_and_plot(
                 config.dataset_stem,
                 replicate.rep_id,
                 "",
-                config.plot_suffix
+                config.plot_suffix,
             )
             if config.plot_workers == 1:
                 _save_plot(
@@ -353,7 +344,7 @@ def _analyse_replicates_and_plot(
                 config.dataset_stem,
                 replicate.rep_id,
                 "spectrum",
-                config.plot_suffix
+                config.plot_suffix,
             )
             spectrum_args = (
                 spectrum_out,
@@ -444,9 +435,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if config.spectra_summary_path is not None:
         spectrum_inputs = [
-            (rep_id, result)
-            for rep_id, result in result_entries
-            if result is not None
+            (rep_id, result) for rep_id, result in result_entries if result is not None
         ]
         if spectrum_inputs:
             save_residual_spectra_summary(
@@ -459,7 +448,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 band_max=config.spectra_band_max,
             )
 
-    _print_noise_totals(
+    print_noise_summary(
         config.dataset_stem,
         noise_summary,
         force_unit_label=config.force_unit_label,
@@ -479,7 +468,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             force_unit_label=config.force_unit_label,
             value_scale=config.unit_scale,
         )
-    _print_summary_totals(config.dataset_stem, summary)
+    print_dataset_summary(config.dataset_stem, summary)
 
     return 0
 
@@ -663,132 +652,6 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Unit to use when reporting forces. Choose 'cN' to scale values by 100 for readability.",
     )
     return parser
-
-
-def _print_summary(
-    rep_id: str,
-    sample_count: int,
-    spikes: list[Spike],
-    threshold: float,
-    *,
-    noise_estimate: NoiseEstimate | None,
-    filter_cutoff_hz: float | None,
-    instrument_peak_hz: float | None,
-    force_unit_label: str,
-    unit_scale: float,
-) -> None:
-    print(f"Replicate {rep_id}")
-    display_threshold = scale_force_value(threshold, unit_scale)
-    header_bits = [
-        f"samples={sample_count}",
-        f"threshold={display_threshold:.3f} {force_unit_label}",
-    ]
-    print("  " + " | ".join(header_bits))
-    if noise_estimate is not None:
-        peak_fragment = (
-            f" | peak≈{noise_estimate.noise_peak_hz:.2f} Hz"
-            if noise_estimate.noise_peak_hz is not None
-            else ""
-        )
-        std_display = scale_force_value(noise_estimate.std_n, unit_scale)
-        bias_display = scale_force_value(noise_estimate.dc_offset_n, unit_scale)
-        max_display = scale_force_value(noise_estimate.max_abs_n, unit_scale)
-        line = (
-            f"  noise: std={std_display:.5f} {force_unit_label} | "
-            f"bias={bias_display:.5f} {force_unit_label} | "
-            f"max_abs={max_display:.5f} {force_unit_label} | "
-            f"n={noise_estimate.sample_count} | disp≤{noise_estimate.disp_max_mm:.3f} mm | span={noise_estimate.time_span_s:.3f} s"
-        )
-        print(line + peak_fragment)
-    if filter_cutoff_hz is not None:
-        if instrument_peak_hz is not None:
-            print(
-                f"  denoised: low-pass filter fc={filter_cutoff_hz:.2f} Hz (instrument peak ≈ {instrument_peak_hz:.2f} Hz)"
-            )
-        else:
-            print(f"  denoised: low-pass filter fc={filter_cutoff_hz:.2f} Hz")
-    elif instrument_peak_hz is not None:
-        print(f"  instrument peak ≈ {instrument_peak_hz:.2f} Hz (filter not applied)")
-    if not spikes:
-        print("  No spikes above threshold in the selected displacement window.\n")
-        return
-    for spike in spikes:
-        residual_display = scale_force_value(spike.residual_n, unit_scale)
-        print(
-            f"  time={spike.time_s:.3f} s | disp={spike.disp_mm:.3f} mm | "
-            f"residual={residual_display:.4f} {force_unit_label} (idx {spike.index})"
-        )
-    print()
-
-
-def _print_noise_totals(
-    dataset_stem: str,
-    noise_entries: list[tuple[str, NoiseEstimate | None]],
-    *,
-    force_unit_label: str,
-    unit_scale: float,
-    common_peak_hz: float | None,
-    common_cutoff_hz: float | None,
-) -> None:
-    print(f"Noise estimates for {dataset_stem}")
-    available = [(rep_id, est) for rep_id, est in noise_entries if est is not None]
-    if not available:
-        print("  No noise window samples found.\n")
-        return
-
-    stds = np.array([est.std_n for _, est in available], dtype=float) * unit_scale
-    biases = (
-        np.array([est.dc_offset_n for _, est in available], dtype=float) * unit_scale
-    )
-    max_abs = (
-        np.array([est.max_abs_n for _, est in available], dtype=float) * unit_scale
-    )
-    disp_limits = np.array([est.disp_max_mm for _, est in available], dtype=float)
-    sample_total = int(sum(est.sample_count for _, est in available))
-
-    print(
-        "  replicates={} | median std={:.5f} {unit} | mean std={:.5f} {unit} | max abs noise={:.5f} {unit}".format(
-            len(available),
-            float(np.median(stds)),
-            float(np.mean(stds)),
-            float(np.max(max_abs)),
-            unit=force_unit_label,
-        )
-    )
-    print(
-        "  bias median={:.5f} {unit} | bias range=({:.5f}, {:.5f}) {unit}".format(
-            float(np.median(biases)),
-            float(np.min(biases)),
-            float(np.max(biases)),
-            unit=force_unit_label,
-        )
-    )
-    print(
-        "  total noise samples={} | max disp used={:.3f} mm".format(
-            sample_total,
-            float(np.max(disp_limits)),
-        )
-    )
-    if common_peak_hz is not None:
-        second_line = f"  instrument peak≈{common_peak_hz:.2f} Hz"
-        if common_cutoff_hz is not None:
-            second_line += f" | applied cutoff≈{common_cutoff_hz:.2f} Hz"
-        print(second_line)
-    print()
-
-
-def _print_summary_totals(dataset_stem: str, summary: list[tuple[str, int]]) -> None:
-    print(f"Summary for {dataset_stem}")
-    if not summary:
-        print("  No replicates processed.\n")
-        return
-    total = 0
-    for rep_id, count in summary:
-        total += count
-        plural = "spikes" if count != 1 else "spike"
-        print(f"  {rep_id}: {count} {plural}")
-    plural_total = "spikes" if total != 1 else "spike"
-    print(f"  Total: {total} {plural_total}\n")
 
 
 if __name__ == "__main__":

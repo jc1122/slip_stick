@@ -3,11 +3,13 @@ from __future__ import annotations
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from math import ceil
 from pathlib import Path
-from typing import Any, Iterable, List, Sequence
+from typing import Any, List, Sequence
 
 import numpy as np
 
+from .core import compute_frequency_band_ratios
 from .models import DetectionResult, NoiseEstimate
+from .utils import pluralize, compute_rms
 
 try:  # Plotting is optional; only enabled when matplotlib is present.
     import matplotlib.pyplot as plt  # type: ignore
@@ -48,16 +50,19 @@ DEFAULT_SPECTRUM_REFERENCE_BANDS: tuple[tuple[str, float, float], ...] = (
 
 def _validate_noise_plot_data(noise: NoiseEstimate) -> None:
     """Validate that noise estimate has required plotting data.
-    
+
     Args:
         noise: NoiseEstimate instance to validate.
-    
+
     Raises:
         ValueError: If any required field is missing.
     """
     required_fields = [
-        'raw_force', 'baseline_force', 'residual_force',
-        'disp_mm', 'time_s'
+        "raw_force",
+        "baseline_force",
+        "residual_force",
+        "disp_mm",
+        "time_s",
     ]
     missing = [f for f in required_fields if getattr(noise, f) is None]
     if missing:
@@ -67,14 +72,10 @@ def _validate_noise_plot_data(noise: NoiseEstimate) -> None:
 
 
 def _configure_spectrum_axis(
-    ax,
-    freqs: np.ndarray,
-    power: np.ndarray,
-    title: str,
-    force_unit_label: str
+    ax, freqs: np.ndarray, power: np.ndarray, title: str, force_unit_label: str
 ) -> None:
     """Configure common settings for spectrum plots.
-    
+
     Args:
         ax: Matplotlib axis to configure.
         freqs: Frequency array.
@@ -101,10 +102,10 @@ def _add_frequency_band_shading(
     band_min: float | None,
     band_max: float | None,
     reference_bands: Sequence[tuple[str, float, float]],
-    has_spikes: bool
+    has_spikes: bool,
 ) -> None:
     """Add frequency band shading to a spectrum plot.
-    
+
     Args:
         ax: Matplotlib axis to add shading to.
         freqs: Frequency array.
@@ -119,10 +120,10 @@ def _add_frequency_band_shading(
         lower = min(band_min, band_max)
         upper = max(band_min, band_max)
         ax.axvspan(lower, upper, color="#f0c5ff", alpha=0.35)
-    
+
     # Reference bands with annotations (only if spikes detected)
     if reference_bands and has_spikes:
-        band_ratios = _compute_band_ratios(freqs, power, reference_bands)
+        band_ratios = compute_frequency_band_ratios(freqs, power, reference_bands)
         for label, lower, upper, ratio in band_ratios:
             if ratio < 0.05:
                 continue
@@ -139,13 +140,10 @@ def _add_frequency_band_shading(
 
 
 def _add_peak_marker(
-    ax,
-    peak_freq: float,
-    power: np.ndarray,
-    fontsize: int = 9
+    ax, peak_freq: float, power: np.ndarray, fontsize: int = 9
 ) -> None:
     """Add a vertical marker line and label for peak frequency.
-    
+
     Args:
         ax: Matplotlib axis to add marker to.
         peak_freq: Peak frequency in Hz.
@@ -199,28 +197,6 @@ def _execute_plot_job(kind: str, payload: tuple[Any, ...]) -> None:
         raise ValueError(f"Unknown plot job type: {kind}")
 
 
-def _compute_band_ratios(
-    freqs: np.ndarray,
-    power: np.ndarray,
-    bands: Iterable[tuple[str, float, float]],
-) -> list[tuple[str, float, float, float]]:
-    if freqs.size == 0 or power.size == 0:
-        return []
-    total_power = float(np.sum(power))
-    if total_power <= 0.0:
-        return []
-    ratios: list[tuple[str, float, float, float]] = []
-    for label, lower, upper in bands:
-        mask = (freqs >= lower) & (freqs <= upper)
-        if not np.any(mask):
-            continue
-        band_power = float(np.sum(power[mask]))
-        if band_power <= 0.0:
-            continue
-        ratios.append((label, lower, upper, band_power / total_power))
-    return ratios
-
-
 def _save_residual_spectrum_plot(
     out_path: Path,
     dataset_stem: str,
@@ -230,7 +206,9 @@ def _save_residual_spectrum_plot(
     value_scale: float,
     band_min: float | None,
     band_max: float | None,
-    reference_bands: Sequence[tuple[str, float, float]] = DEFAULT_SPECTRUM_REFERENCE_BANDS,
+    reference_bands: Sequence[
+        tuple[str, float, float]
+    ] = DEFAULT_SPECTRUM_REFERENCE_BANDS,
 ) -> None:
     assert plt is not None
 
@@ -253,19 +231,19 @@ def _save_residual_spectrum_plot(
         band_min,
         band_max,
         reference_bands,
-        has_spikes=bool(result.spikes)
+        has_spikes=bool(result.spikes),
     )
 
     if result.peak_freq_hz is not None:
         _add_peak_marker(ax, result.peak_freq_hz, result.residual_power)
 
-    rms = np.sqrt(np.mean(result.residual**2))
+    rms = compute_rms(result.residual)
     _configure_spectrum_axis(
         ax,
         result.residual_freqs,
         result.residual_power,
         f"Replicate {rep_id} (RMS {rms * value_scale:.2f} {force_unit_label})",
-        force_unit_label
+        force_unit_label,
     )
 
     fig.suptitle(
@@ -276,9 +254,6 @@ def _save_residual_spectrum_plot(
     fig.tight_layout(rect=[0, 0, 1, 0.96])
     fig.savefig(out_path, dpi=110)
     plt.close(fig)
-
-
-
 
 
 def _save_plot(
@@ -352,7 +327,9 @@ def save_residual_spectra_summary(
     value_scale: float,
     band_min: float | None,
     band_max: float | None,
-    reference_bands: Sequence[tuple[str, float, float]] = DEFAULT_SPECTRUM_REFERENCE_BANDS,
+    reference_bands: Sequence[
+        tuple[str, float, float]
+    ] = DEFAULT_SPECTRUM_REFERENCE_BANDS,
 ) -> None:
     assert plt is not None
 
@@ -382,7 +359,7 @@ def save_residual_spectra_summary(
             color="#2a5599",
             linewidth=1.2,
         )
-        
+
         spike_count = len(result.spikes)
         _add_frequency_band_shading(
             ax,
@@ -391,7 +368,7 @@ def save_residual_spectra_summary(
             band_min,
             band_max,
             reference_bands,
-            has_spikes=spike_count > 0
+            has_spikes=spike_count > 0,
         )
 
         if result.peak_freq_hz is not None:
@@ -401,20 +378,20 @@ def save_residual_spectra_summary(
             ax.text(
                 0.02,
                 0.92,
-                f"{spike_count} spike{'s' if spike_count != 1 else ''}",
+                f"{spike_count} {pluralize(spike_count, 'spike')}",
                 transform=ax.transAxes,
                 fontsize=8,
                 fontweight="semibold",
                 color="#b22222",
             )
 
-        rms = float(np.sqrt(np.mean(result.residual**2)))
+        rms = compute_rms(result.residual)
         _configure_spectrum_axis(
             ax,
             result.residual_freqs,
             result.residual_power,
             f"Rep {rep_id} (RMS {rms * value_scale:.2f} {force_unit_label})",
-            force_unit_label
+            force_unit_label,
         )
 
     fig.suptitle(
@@ -426,6 +403,31 @@ def save_residual_spectra_summary(
     out_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out_path, dpi=130)
     plt.close(fig)
+
+
+def _format_noise_stats(
+    std_n: float,
+    max_abs_n: float,
+    force_unit_label: str,
+    value_scale: float,
+    peak_hz: float | None = None,
+) -> str:
+    """Format noise statistics string for display.
+
+    Args:
+        std_n: Standard deviation in Newtons.
+        max_abs_n: Maximum absolute noise in Newtons.
+        force_unit_label: Force unit label (e.g., 'cN / 25 mm').
+        value_scale: Scaling factor for display units.
+        peak_hz: Optional peak frequency in Hz.
+
+    Returns:
+        Formatted statistics string.
+    """
+    base = f"std={std_n * value_scale:.5f} {force_unit_label} | max |noise|={max_abs_n * value_scale:.5f} {force_unit_label}"
+    if peak_hz is not None:
+        base += f" | peak≈{peak_hz:.2f} Hz"
+    return base
 
 
 def _save_noise_plot(
@@ -477,16 +479,25 @@ def _save_noise_plot(
     ax_hist.set_ylabel("Count")
     if noise.noise_peak_hz is not None:
         ax_hist.set_title(
-            f"std={noise.std_n * value_scale:.5f} {force_unit_label} | max |noise|={noise.max_abs_n * value_scale:.5f} {force_unit_label} | peak≈{noise.noise_peak_hz:.2f} Hz"
+            _format_noise_stats(
+                noise.std_n,
+                noise.max_abs_n,
+                force_unit_label,
+                value_scale,
+                noise.noise_peak_hz,
+            )
         )
     else:
         ax_hist.set_title(
-            f"std={noise.std_n * value_scale:.5f} {force_unit_label} | max |noise|={noise.max_abs_n * value_scale:.5f} {force_unit_label}"
+            _format_noise_stats(
+                noise.std_n, noise.max_abs_n, force_unit_label, value_scale
+            )
         )
 
     fig.suptitle(dataset_stem, y=0.98, fontsize=12)
     fig.tight_layout(rect=[0, 0, 1, 0.96])
-    fig.savefig(out_path, dpi=110)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, dpi=130)
     plt.close(fig)
 
 

@@ -1,168 +1,263 @@
-# Slip-stick spike finder
+# Slip-stick Spike Detection
 
-`slipstick.py` is a command-line helper for spotting slip–stick spikes in fixed-format
-FTM 10 CSV exports. It:
+A command-line tool for detecting slip-stick spikes in tensile tester data from FTM 10 instruments. Analyzes force-displacement traces to identify sudden force excursions that indicate slip-stick behavior in adhesive materials.
 
-- streams each replicate from the CSV (time, force, displacement) and rescales forces
-  to the requested reporting width/unit,
-- trims the trace to a configurable displacement window (default 50–200 mm),
-- estimates and subtracts a smooth Savitzky–Golay baseline,
-- applies an instrumental-noise-aware low-pass filter before spike detection, and
-- reports residual excursions above a force threshold (defaults to 1.4 cN / 25 mm).
+## What It Does
 
-Optionally it renders per-replicate plots and noise diagnostics with a parallel
-matplotlib backend (default 4 worker processes), which keeps batch workflows fast.
+- **Loads** FTM 10 CSV files with automatic handling of European decimal format (commas)
+- **Filters** instrumental noise using dataset-level frequency analysis
+- **Detrends** force traces using Savitzky-Golay smoothing
+- **Detects** residual spikes above configurable thresholds
+- **Reports** spike locations, magnitudes, and statistics
+- **Visualizes** results with publication-quality plots (optional)
 
----
+## Quick Start
 
-## Quick start
-
+### Basic Analysis
 ```bash
-python slipstick.py --input datasets/20250317_C1E_rossella_internal.csv
+# Analyze a single CSV file
+python -m slipstick.cli --input datasets/20250317_C1E_rossella_internal.csv
 ```
 
-The command prints replicate summaries (noise statistics + spike list) and a
-dataset-level total. To archive the text output, redirect the CLI to `summaries/`.
-
+### With Visual Output
 ```bash
-python slipstick.py --input datasets/<file>.csv > summaries/<file>.txt
+# Generate analysis plots
+python -m slipstick.cli \
+  --input datasets/20250317_C1E_rossella_internal.csv \
+  --plot-dir plots/
 ```
 
----
-
-## CLI reference
-
-| Flag | Description | Default |
-|------|-------------|---------|
-| `--input`, `-i` | Path to the CSV file (required). | – |
-| `--disp-min` | Lower displacement bound (mm). | `50.0` |
-| `--disp-max` | Upper displacement bound (mm). | `200.0` |
-| `--window-seconds` | Savitzky–Golay window length in seconds (rounded to nearest odd sample count). If omitted, uses 50% of the trimmed trace, min 4 s. | auto |
-| `--polyorder` | Savitzky–Golay polynomial order. | `3` |
-| `--threshold` | Residual spike threshold in reporting units. The internal default is `0.0504 N`, equivalent to **1.4 cN / 25 mm** after scaling. | auto |
-| `--plot-dir` | Directory for analysis plots (force, baseline, residual). Creates `<dataset>_<replicate>.<ext>`. | not saved |
-| `--plot-workers` | Number of processes for plot generation. Useful values are 2–6; the default of 4 balances throughput and memory. | `4` |
-| `--plot-format` | Plot image format: `png`, `pdf`, or `svg`. | `png` |
-| `--spectra-plot-dir` | Directory for residual spectrum plots. Creates `<dataset>_<replicate>_spectrum.<ext>`. | not saved |
-| `--spectra-summary` | Path for a multi-panel residual spectrum summary image (parent folder auto-created). | not saved |
-| `--spectra-band-min` | Lower bound (Hz) of the highlighted slip–stick band for spectrum plots. | `1.8` |
-| `--spectra-band-max` | Upper bound (Hz) of the highlighted slip–stick band for spectrum plots. | `2.4` |
-| `--noise-plot-dir` | Directory for instrumental-noise plots plus dataset summary. | not saved |
-| `--noise-disp-min` | Lower displacement bound (mm) for the noise window. | `1.0` |
-| `--noise-disp-max` | Upper displacement bound (mm) for the noise window. | `5.0` |
-| `--noise-force-max` | Optional absolute force limit (in reporting units) to keep quiet samples in the noise window. | none |
-| `--noise-min-samples` | Minimum number of samples used to characterise the noise window (falls back to earliest samples). | `40` |
-| `--noise-force-onset` | Absolute force (reporting units) that marks first specimen contact; samples above this are excluded from the noise estimate. | `0.2 N` at collection width |
-| `--instrument-peak-hz` | Global instrumental noise peak (Hz). Overrides replicate-level peak detection. | auto |
-| `--instrument-cutoff-hz` | Explicit low-pass cutoff (Hz). Overrides the derived cutoff. | auto |
-| `--instrument-cutoff-factor` | Scale factor applied to the common peak when deriving the low-pass cutoff. | `0.8` |
-| `--collection-width-mm` | Specimen width used to normalise the raw forces. | `90.0` |
-| `--report-width-mm` | Target width for reporting (forces are linearly rescaled). | `25.0` |
-| `--report-unit` | Output force unit: `N` or `cN`. | `cN` |
-
-Notes:
-
-- Any force threshold/gating argument is interpreted in the reporting width/unit.
-- When `--plot-dir` or `--noise-plot-dir` is supplied, the script spawns a pool of
-  worker processes; the job queue is flushed before returning, and failures bubble up.
-- Vector formats (`--plot-format pdf`/`svg`) can be combined with Cairo backends, e.g.
-  `MPLBACKEND=module://mplcairo.base python slipstick.py ...`.
-
----
-
-## Usage examples
-
-### Single dataset with plots
-
+### Batch Processing
 ```bash
-python slipstick.py \
-  --input datasets/20250617_C1E_dolpap_external.csv \
-  --plot-dir plots/full_run/20250617_C1E_dolpap_external \
-  --noise-plot-dir noise_plots/full_run/20250617_C1E_dolpap_external
-```
-
-### Publication-friendly vector output
-
-```bash
-MPLBACKEND=module://mplcairo.base \
-python slipstick.py \
-  --input datasets/20250318_C1E_rossella_external.csv \
-  --plot-dir plots/pdf/20250318_C1E_rossella_external \
-  --noise-plot-dir noise_plots/pdf/20250318_C1E_rossella_external \
-  --plot-format pdf \
-  --plot-workers 4
-```
-
-### Residual spectrum overview
-
-```bash
-python slipstick.py \
-  --input datasets/20250617_C1E_dolpap_external.csv \
-  --spectra-summary plots/residual_spectra/20250617_C1E_dolpap_external.png \
-  --spectra-band-min 1.8 \
-  --spectra-band-max 2.4
-```
-
-### Batch all datasets
-
-```bash
-for f in datasets/*.csv; do
-  stem=$(basename "$f" .csv)
-  python slipstick.py \
-    --input "$f" \
-    --plot-dir "plots/full_run/$stem" \
-    --noise-plot-dir "noise_plots/full_run/$stem" \
-    --plot-workers 4 \
-    > "summaries/$stem.txt"
+# Process all CSV files in a directory
+for file in datasets/*.csv; do
+  python -m slipstick.cli --input "$file" > "results/$(basename "$file" .csv).txt"
 done
 ```
 
----
+## Use Cases
 
-## Instrumental-noise workflow (summary)
-
-1. Gather samples inside `--noise-disp-min/max` before specimen engagement.
-2. Optionally clip by `--noise-force-max` and `--noise-force-onset`.
-3. Remove slow ramps with a long Savitzky–Golay filter and compute residual stats
-   (bias, standard deviation, max absolute residual).
-4. Estimate the dominant noise peak via FFT. The median peak across replicates
-   defines a Butterworth low-pass filter (scaled by `--instrument-cutoff-factor`).
-5. Apply the filter to every replicate before baseline fitting and peak detection.
-
-Per-replicate and dataset-level summaries print the key noise metrics and the
-applied cutoff so you can confirm the analysis band quickly.
-
----
-
-## Performance tips
-
-- Leaving `--plot-workers` at 4 is a good default. Increase to ~6 if you have spare
-  CPU/RAM, or reduce to 1 when running in very tight environments.
-- Vector formats (PDF/SVG) typically render faster when using the Cairo backend
-  (`MPLBACKEND=module://mplcairo.base`) because they avoid rasterisation overhead.
-- The CSV loader streams rows, so memory use scales with the number of active replicates,
-  not the total row count.
-
----
-
-## Dependencies
-
-- Python 3.9+
-- NumPy
-- SciPy
-- Matplotlib (only required when using `--plot-dir`, `--noise-plot-dir`, or the residual spectrum options)
-- Optional: `mplcairo` for fast vector backends (`pip install mplcairo`)
-
-Install the essentials with:
+### 1. **Quality Control** - Detect Adhesive Failures
+Monitor adhesive performance by identifying slip-stick events that indicate poor bonding or material defects.
 
 ```bash
-python -m pip install -r requirements.txt
+# Check for spikes in production samples
+python -m slipstick.cli \
+  --input production_sample.csv \
+  --threshold 2.0 \
+  --disp-min 20 \
+  --disp-max 150
 ```
 
----
+### 2. **Research Analysis** - Material Characterization
+Analyze how different formulations affect slip-stick behavior across multiple replicates.
 
-## Data layout
+```bash
+# Compare material formulations
+python -m slipstick.cli \
+  --input formulation_A.csv \
+  --plot-dir results/formulation_A/ \
+  --spectra-summary results/formulation_A/spectra.png
+```
 
-Place raw CSV files in `datasets/` (or supply absolute paths). The tool never mutates
-the input files; all artefacts are written to the directories you pass via the CLI
-and the textual summary goes to stdout.
+### 3. **Instrument Validation** - Noise Characterization
+Understand instrumental noise characteristics and validate measurement quality.
+
+```bash
+# Analyze noise profile
+python -m slipstick.cli \
+  --input baseline_measurement.csv \
+  --noise-plot-dir noise_analysis/ \
+  --spectra-plot-dir frequency_analysis/
+```
+
+### 4. **Publication Figures** - High-Quality Visualizations
+Generate publication-ready plots with consistent styling and proper units.
+
+```bash
+# Create vector plots for publication
+MPLBACKEND=module://mplcairo.base python -m slipstick.cli \
+  --input sample_data.csv \
+  --plot-dir figures/ \
+  --plot-format pdf \
+  --report-unit cN \
+  --report-width-mm 25
+```
+
+## Command Reference
+
+### Core Options
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--input`, `-i` | Path to FTM 10 CSV file (required) | - |
+| `--disp-min` | Minimum displacement for analysis (mm) | 50.0 |
+| `--disp-max` | Maximum displacement for analysis (mm) | 200.0 |
+| `--threshold` | Spike detection threshold (reporting units) | 1.4 cN/25mm |
+
+### Analysis Options
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--window-seconds` | Savitzky-Golay window length (seconds) | auto (50% of trace) |
+| `--polyorder` | Savitzky-Golay polynomial order | 3 |
+| `--collection-width-mm` | Original specimen width (mm) | 90.0 |
+| `--report-width-mm` | Normalized reporting width (mm) | 25.0 |
+| `--report-unit` | Force unit: `N` or `cN` | cN |
+
+### Noise Filtering
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--noise-disp-min` | Noise window start (mm) | 1.0 |
+| `--noise-disp-max` | Noise window end (mm) | 5.0 |
+| `--instrument-cutoff-factor` | Filter cutoff scaling | 0.8 |
+
+### Output Options
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--plot-dir` | Directory for analysis plots | not saved |
+| `--noise-plot-dir` | Directory for noise diagnostic plots | not saved |
+| `--spectra-plot-dir` | Directory for frequency spectrum plots | not saved |
+| `--spectra-summary` | Multi-panel spectrum summary image | not saved |
+| `--plot-format` | Image format: `png`, `pdf`, `svg` | png |
+| `--plot-workers` | Parallel plot generation workers | 4 |
+
+## Example Workflows
+
+### Routine Quality Control
+```bash
+#!/bin/bash
+# Daily QC check for adhesive samples
+
+SAMPLE_DIR="daily_samples"
+RESULTS_DIR="qc_results"
+
+for csv_file in "$SAMPLE_DIR"/*.csv; do
+    base_name=$(basename "$csv_file" .csv)
+
+    # Run analysis with standard settings
+    python -m slipstick.cli \
+        --input "$csv_file" \
+        --plot-dir "$RESULTS_DIR/plots/$base_name" \
+        --threshold 1.5 \
+        > "$RESULTS_DIR/reports/$base_name.txt"
+
+    # Check for excessive spikes (more than 5)
+    spike_count=$(grep "spikes found" "$RESULTS_DIR/reports/$base_name.txt" | cut -d' ' -f1)
+    if [ "$spike_count" -gt 5 ]; then
+        echo "WARNING: $base_name has $spike_count spikes - investigate!"
+    fi
+done
+```
+
+### Research Study Analysis
+```bash
+#!/bin/bash
+# Analyze multiple conditions in a material study
+
+STUDY_DIR="material_study"
+OUTPUT_DIR="analysis_results"
+
+# Process each experimental condition
+for condition in A B C; do
+    echo "Analyzing condition $condition..."
+
+    python -m slipstick.cli \
+        --input "$STUDY_DIR/condition_${condition}.csv" \
+        --plot-dir "$OUTPUT_DIR/plots/condition_${condition}" \
+        --spectra-summary "$OUTPUT_DIR/spectra/condition_${condition}_spectra.png" \
+        --spectra-band-min 1.5 \
+        --spectra-band-max 2.5 \
+        --report-width-mm 25 \
+        > "$OUTPUT_DIR/reports/condition_${condition}.txt"
+done
+
+echo "Analysis complete. Check $OUTPUT_DIR for results."
+```
+
+### Instrument Calibration Check
+```bash
+# Verify instrument noise is within acceptable limits
+
+python -m slipstick.cli \
+    --input calibration_run.csv \
+    --noise-plot-dir calibration_check/ \
+    --noise-disp-min 0.5 \
+    --noise-disp-max 3.0 \
+    --instrument-cutoff-factor 0.7
+```
+
+## Output Format
+
+### Console Output
+```
+Replicate 1 _ 1
+  samples=1250 | threshold=1.400 cN / 25 mm
+  noise: std=0.045 cN / 25 mm | bias=0.012 cN / 25 mm | max_abs=0.234 cN / 25 mm | n=150 | disp≤5.0 mm | span=1.5 s
+  denoised: low-pass filter fc=8.50 Hz (instrument peak ≈ 10.63 Hz)
+  time=45.23 s | disp=127.8 mm | residual=2.145 cN / 25 mm (idx 892)
+
+Replicate 1 _ 2
+  samples=1248 | threshold=1.400 cN / 25 mm
+  noise: std=0.041 cN / 25 mm | bias=0.008 cN / 25 mm | max_abs=0.198 cN / 25 mm | n=148 | disp≤5.0 mm | span=1.5 s
+  denoised: low-pass filter fc=8.50 Hz (instrument peak ≈ 10.63 Hz)
+  No spikes above threshold in the selected displacement window.
+
+Summary for 20250317_C1E_rossella_internal
+  replicates: count=10 | median std=0.043 cN / 25 mm | mean std=0.044 cN / 25 mm | max abs noise=0.245 cN / 25 mm
+  bias: median=0.010 cN / 25 mm | range=(0.005, 0.015) cN / 25 mm
+  total noise samples: count=1485 | max disp used=5.0 mm
+  instrument peak≈10.63 Hz | applied cutoff≈8.50 Hz
+  spikes found: 1
+```
+
+### Generated Files
+- **Analysis plots**: `dataset_replicate.png` - Force trace, baseline, and detected spikes
+- **Noise plots**: `dataset_replicate_noise.png` - Noise estimation diagnostics
+- **Spectrum plots**: `dataset_replicate_spectrum.png` - Frequency analysis of residuals
+- **Summary spectra**: Multi-panel overview of all replicates' frequency content
+
+## Data Format
+
+### Input: FTM 10 CSV Format
+- **Header**: 3 rows (labels, names, units)
+- **Columns**: Time (s), Force (N), Displacement (mm) for each replicate
+- **Decimals**: European format with commas (automatically handled)
+- **Layout**: Multiple replicates in wide format
+
+Example CSV structure:
+```csv
+"1 _ 1",,,"1 _ 2",,,
+"Czas","Siła","Przemieszczenie","Czas","Siła","Przemieszczenie"
+"sec","N","mm","sec","N","mm"
+"0","0,094","0,001","0","0,001","0,001"
+"0,01","0,095","0,007","0,01","0,002","0,007"
+...
+```
+
+## Performance & Tips
+
+- **Memory efficient**: Streams CSV data, processes replicates independently
+- **Parallel plotting**: Uses multiple CPU cores for plot generation (default 4 workers)
+- **Vector output**: Use `MPLBACKEND=module://mplcairo.base` for fast PDF/SVG generation
+- **Batch processing**: Shell loops work well for processing multiple files
+- **Threshold tuning**: Start with default 1.4 cN/25mm, adjust based on your materials
+
+## Installation
+
+```bash
+# Install core dependencies
+pip install numpy scipy
+
+# Install with plotting support
+pip install numpy scipy matplotlib
+
+# Optional: Fast vector graphics
+pip install mplcairo
+```
+
+## Requirements
+
+- Python 3.9+
+- NumPy (required)
+- SciPy (required)
+- Matplotlib (optional, for plotting)
+- mplcairo (optional, for fast vector output)

@@ -4,6 +4,7 @@ import argparse
 import importlib.util
 import locale
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Sequence
 
@@ -31,49 +32,44 @@ DEFAULT_THRESHOLD_FORCE_N = 0.0504
 DEFAULT_NOISE_FORCE_ONSET_N = 0.2
 
 
-def main(argv: Sequence[str] | None = None) -> int:
-    parser = _build_parser()
-    args = parser.parse_args(list(argv) if argv is not None else None)
+@dataclass
+class CliConfig:
+    """Configuration derived from command-line arguments."""
 
-    dataset_path = Path(args.input)
-    replicates = load_replicates(dataset_path)
-    if not replicates:
-        print("No replicates found in the file.")
-        return 1
+    collection_width_mm: float
+    report_width_mm: float
+    force_scale: float
+    unit_choice: str
+    unit_scale: float
+    unit_symbol: str
+    force_unit_label: str
+    threshold_value: float
+    noise_force_max: float | None
+    noise_force_onset: float | None
+    plot_dir: Path | None
+    noise_plot_dir: Path | None
+    plot_workers: int
+    plot_suffix: str
+    dataset_stem: str
 
-    plot_dir: Path | None = None
-    if args.plot_dir:
-        if importlib.util.find_spec("matplotlib") is None:
-            print(
-                "matplotlib is required for plotting; skipping --plot-dir output.",
-                file=sys.stderr,
-            )
-        else:
-            plot_dir = Path(args.plot_dir)
-            plot_dir.mkdir(parents=True, exist_ok=True)
 
-    noise_plot_dir: Path | None = None
-    if args.noise_plot_dir:
-        if importlib.util.find_spec("matplotlib") is None:
-            print(
-                "matplotlib is required for plotting; skipping --noise-plot-dir output.",
-                file=sys.stderr,
-            )
-        else:
-            noise_plot_dir = Path(args.noise_plot_dir)
-            noise_plot_dir.mkdir(parents=True, exist_ok=True)
+def _ensure_plot_dir(dir_path: str | None, flag_name: str) -> Path | None:
+    """Create a directory for saving plots, if matplotlib is available."""
+    if not dir_path:
+        return None
+    if importlib.util.find_spec("matplotlib") is None:
+        print(
+            f"matplotlib is required for plotting; skipping {flag_name} output.",
+            file=sys.stderr,
+        )
+        return None
+    path = Path(dir_path)
+    path.mkdir(parents=True, exist_ok=True)
+    return path
 
-    dataset_stem = dataset_path.stem
 
-    plot_workers = 4
-    try:
-        plot_workers = int(args.plot_workers)
-    except (TypeError, ValueError):
-        plot_workers = 4
-    if plot_workers <= 0:
-        plot_workers = 4
-    plot_format = str(args.plot_format).lower()
-    plot_suffix = plot_format
+def _create_cli_config(args: argparse.Namespace, dataset_path: Path) -> CliConfig:
+    """Create a configuration object from the parsed command-line arguments."""
 
     collection_width_mm = (
         args.collection_width_mm
@@ -97,7 +93,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         value: float | None, *, default_n: float | None
     ) -> float | None:
         """Convert CLI force values to the scaled analysis units."""
-
         base_value = default_n if value is None else value / unit_scale
         if base_value is None:
             return None
@@ -114,13 +109,43 @@ def main(argv: Sequence[str] | None = None) -> int:
         args.noise_force_onset, default_n=DEFAULT_NOISE_FORCE_ONSET_N
     )
 
-    if force_scale != 1.0:
-        for replicate in replicates:
-            replicate.force_n *= force_scale
+    plot_workers = 4
+    try:
+        plot_workers = int(args.plot_workers)
+    except (TypeError, ValueError):
+        plot_workers = 4
+    if plot_workers <= 0:
+        plot_workers = 4
 
-    retain_noise_segments = noise_plot_dir is not None
+    return CliConfig(
+        collection_width_mm=collection_width_mm,
+        report_width_mm=report_width_mm,
+        force_scale=force_scale,
+        unit_choice=unit_choice,
+        unit_scale=unit_scale,
+        unit_symbol=unit_symbol,
+        force_unit_label=force_unit_label,
+        threshold_value=threshold_value,
+        noise_force_max=noise_force_max,
+        noise_force_onset=noise_force_onset,
+        plot_dir=_ensure_plot_dir(args.plot_dir, "--plot-dir"),
+        noise_plot_dir=_ensure_plot_dir(args.noise_plot_dir, "--noise-plot-dir"),
+        plot_workers=plot_workers,
+        plot_suffix=str(args.plot_format).lower(),
+        dataset_stem=dataset_path.stem,
+    )
 
-    summary: list[tuple[str, int]] = []
+
+def _estimate_noise_for_replicates(
+    replicates: list[Replicate],
+    args: argparse.Namespace,
+    config: CliConfig,
+    retain_noise_segments: bool,
+) -> tuple[
+    list[tuple[str, NoiseEstimate | None]],
+    list[tuple[Replicate, NoiseEstimate | None]],
+    list[tuple[str, tuple[Any, ...]]],
+]:
     noise_summary: list[tuple[str, NoiseEstimate | None]] = []
     replicate_entries: list[tuple[Replicate, NoiseEstimate | None]] = []
     plot_jobs: list[tuple[str, tuple[Any, ...]]] = []
@@ -130,25 +155,25 @@ def main(argv: Sequence[str] | None = None) -> int:
             replicate,
             disp_min=args.noise_disp_min,
             disp_max=args.noise_disp_max,
-            force_abs_max=noise_force_max,
+            force_abs_max=config.noise_force_max,
             min_samples=args.noise_min_samples,
-            force_onset=noise_force_onset,
+            force_onset=config.noise_force_onset,
             retain_segments=retain_noise_segments,
         )
         noise_summary.append((replicate.rep_id, noise_estimate))
-        if noise_plot_dir is not None and noise_estimate is not None:
+        if config.noise_plot_dir is not None and noise_estimate is not None:
             noise_out = (
-                noise_plot_dir
-                / f"{dataset_stem}_{replicate.rep_id}_noise.{plot_suffix}"
+                config.noise_plot_dir
+                / f"{config.dataset_stem}_{replicate.rep_id}_noise.{config.plot_suffix}"
             )
-            if plot_workers == 1:
+            if config.plot_workers == 1:
                 _save_noise_plot(
                     noise_out,
-                    dataset_stem,
+                    config.dataset_stem,
                     replicate.rep_id,
                     noise_estimate,
-                    force_unit_label=force_unit_label,
-                    value_scale=unit_scale,
+                    force_unit_label=config.force_unit_label,
+                    value_scale=config.unit_scale,
                 )
             else:
                 plot_jobs.append(
@@ -156,16 +181,104 @@ def main(argv: Sequence[str] | None = None) -> int:
                         "noise",
                         (
                             noise_out,
-                            dataset_stem,
+                            config.dataset_stem,
                             replicate.rep_id,
                             noise_estimate,
-                            force_unit_label,
-                            unit_scale,
+                            config.force_unit_label,
+                            config.unit_scale,
                         ),
                     )
                 )
         replicate_entries.append((replicate, noise_estimate))
+    return noise_summary, replicate_entries, plot_jobs
 
+
+def _analyse_replicates_and_plot(
+    replicate_entries: list[tuple[Replicate, NoiseEstimate | None]],
+    replicate_map: dict[str, Replicate],
+    base_cutoff_hz: float | None,
+    common_peak_hz: float | None,
+    config: CliConfig,
+    plot_jobs: list[tuple[str, tuple[Any, ...]]],
+    args: argparse.Namespace,
+) -> tuple[list[tuple[str, int]], list[tuple[str, tuple[Any, ...]]]]:
+    summary: list[tuple[str, int]] = []
+    for replicate, noise_estimate in replicate_entries:
+        analysis_replicate = replicate_map.get(replicate.rep_id, replicate)
+        effective_cutoff: float | None = base_cutoff_hz
+
+        result = _analyse_replicate(
+            analysis_replicate,
+            displacement_window=(args.disp_min, args.disp_max),
+            window_seconds=args.window_seconds,
+            polyorder=args.polyorder,
+            threshold=config.threshold_value,
+        )
+        if result is None:
+            _print_summary(
+                replicate.rep_id,
+                0,
+                [],
+                config.threshold_value,
+                noise_estimate=noise_estimate,
+                filter_cutoff_hz=effective_cutoff,
+                instrument_peak_hz=common_peak_hz,
+                force_unit_label=config.force_unit_label,
+                unit_scale=config.unit_scale,
+            )
+            summary.append((replicate.rep_id, 0))
+            continue
+
+        _print_summary(
+            replicate.rep_id,
+            result.time.size,
+            result.spikes,
+            config.threshold_value,
+            noise_estimate=noise_estimate,
+            filter_cutoff_hz=effective_cutoff,
+            instrument_peak_hz=common_peak_hz,
+            force_unit_label=config.force_unit_label,
+            unit_scale=config.unit_scale,
+        )
+        summary.append((replicate.rep_id, len(result.spikes)))
+
+        if config.plot_dir is not None:
+            out_path = (
+                config.plot_dir
+                / f"{config.dataset_stem}_{replicate.rep_id}.{config.plot_suffix}"
+            )
+            if config.plot_workers == 1:
+                _save_plot(
+                    out_path,
+                    config.dataset_stem,
+                    replicate.rep_id,
+                    result,
+                    config.threshold_value,
+                    force_unit_label=config.force_unit_label,
+                    value_scale=config.unit_scale,
+                )
+            else:
+                plot_jobs.append(
+                    (
+                        "analysis",
+                        (
+                            out_path,
+                            config.dataset_stem,
+                            replicate.rep_id,
+                            result,
+                            config.threshold_value,
+                            config.force_unit_label,
+                            config.unit_scale,
+                        ),
+                    )
+                )
+    return summary, plot_jobs
+
+
+def _calculate_common_frequencies(
+    replicate_entries: list[tuple[Replicate, NoiseEstimate | None]],
+    args: argparse.Namespace,
+) -> tuple[float | None, float | None]:
     common_peak_hz: float | None = None
     if args.instrument_peak_hz is not None and args.instrument_peak_hz > 0:
         common_peak_hz = float(args.instrument_peak_hz)
@@ -186,100 +299,73 @@ def main(argv: Sequence[str] | None = None) -> int:
         if factor <= 0:
             factor = 0.8
         base_cutoff_hz = common_peak_hz * factor
+    return common_peak_hz, base_cutoff_hz
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = _build_parser()
+    args = parser.parse_args(list(argv) if argv is not None else None)
+
+    dataset_path = Path(args.input)
+    replicates = load_replicates(dataset_path)
+    if not replicates:
+        print("No replicates found in the file.")
+        return 1
+
+    config = _create_cli_config(args, dataset_path)
+
+    if config.force_scale != 1.0:
+        for replicate in replicates:
+            replicate.force_n *= config.force_scale
+
+    retain_noise_segments = config.noise_plot_dir is not None
+    noise_summary, replicate_entries, plot_jobs = _estimate_noise_for_replicates(
+        replicates, args, config, retain_noise_segments
+    )
+
+    common_peak_hz, base_cutoff_hz = _calculate_common_frequencies(
+        replicate_entries, args
+    )
 
     processed_replicates = process_replicates(
         replicates, force_scale=1.0, cutoff_hz=base_cutoff_hz
     )
     replicate_map = {rep.rep_id: rep for rep in processed_replicates}
 
-    for replicate, noise_estimate in replicate_entries:
-        analysis_replicate = replicate_map.get(replicate.rep_id, replicate)
-        effective_cutoff: float | None = base_cutoff_hz
-
-        result = _analyse_replicate(
-            analysis_replicate,
-            displacement_window=(args.disp_min, args.disp_max),
-            window_seconds=args.window_seconds,
-            polyorder=args.polyorder,
-            threshold=threshold_value,
-        )
-        if result is None:
-            _print_summary(
-                replicate.rep_id,
-                0,
-                [],
-                threshold_value,
-                noise_estimate=noise_estimate,
-                filter_cutoff_hz=effective_cutoff,
-                instrument_peak_hz=common_peak_hz,
-                force_unit_label=force_unit_label,
-                unit_scale=unit_scale,
-            )
-            summary.append((replicate.rep_id, 0))
-            continue
-
-        _print_summary(
-            replicate.rep_id,
-            result.time.size,
-            result.spikes,
-            threshold_value,
-            noise_estimate=noise_estimate,
-            filter_cutoff_hz=effective_cutoff,
-            instrument_peak_hz=common_peak_hz,
-            force_unit_label=force_unit_label,
-            unit_scale=unit_scale,
-        )
-        summary.append((replicate.rep_id, len(result.spikes)))
-
-        if plot_dir is not None:
-            out_path = plot_dir / f"{dataset_stem}_{replicate.rep_id}.{plot_suffix}"
-            if plot_workers == 1:
-                _save_plot(
-                    out_path,
-                    dataset_stem,
-                    replicate.rep_id,
-                    result,
-                    threshold_value,
-                    force_unit_label=force_unit_label,
-                    value_scale=unit_scale,
-                )
-            else:
-                plot_jobs.append(
-                    (
-                        "analysis",
-                        (
-                            out_path,
-                            dataset_stem,
-                            replicate.rep_id,
-                            result,
-                            threshold_value,
-                            force_unit_label,
-                            unit_scale,
-                        ),
-                    )
-                )
+    summary, plot_jobs = _analyse_replicates_and_plot(
+        replicate_entries,
+        replicate_map,
+        base_cutoff_hz,
+        common_peak_hz,
+        config,
+        plot_jobs,
+        args,
+    )
 
     if plot_jobs:
-        _render_plot_jobs(plot_jobs, max_workers=plot_workers)
+        _render_plot_jobs(plot_jobs, max_workers=config.plot_workers)
 
     _print_noise_totals(
-        dataset_stem,
+        config.dataset_stem,
         noise_summary,
-        force_unit_label=force_unit_label,
-        unit_scale=unit_scale,
+        force_unit_label=config.force_unit_label,
+        unit_scale=config.unit_scale,
         common_peak_hz=common_peak_hz,
         common_cutoff_hz=base_cutoff_hz,
     )
-    if noise_plot_dir is not None:
-        summary_out = noise_plot_dir / f"{dataset_stem}_noise_summary.{plot_suffix}"
+    if config.noise_plot_dir is not None:
+        summary_out = (
+            config.noise_plot_dir
+            / f"{config.dataset_stem}_noise_summary.{config.plot_suffix}"
+        )
         _save_noise_summary_plot(
             summary_out,
-            dataset_stem,
+            config.dataset_stem,
             noise_summary,
-            force_unit_label=force_unit_label,
-            value_scale=unit_scale,
+            force_unit_label=config.force_unit_label,
+            value_scale=config.unit_scale,
         )
-    _print_summary_totals(dataset_stem, summary)
+    _print_summary_totals(config.dataset_stem, summary)
 
     return 0
 

@@ -42,7 +42,7 @@ def _render_plot_jobs(
             _execute_plot_job(kind, payload)
         return
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
-        futures = [executor.submit(_run_plot_job, job) for job in jobs]
+        futures = [executor.submit(_execute_plot_job, *job) for job in jobs]
         for future in as_completed(futures):
             future.result()
 
@@ -51,48 +51,11 @@ def _execute_plot_job(kind: str, payload: tuple[Any, ...]) -> None:
     if plt is None:
         return
     if kind == "analysis":
-        (
-            out_path,
-            dataset_stem,
-            rep_id,
-            result,
-            threshold_value,
-            force_unit_label,
-            unit_scale,
-        ) = payload
-        _save_plot(
-            out_path,
-            dataset_stem,
-            rep_id,
-            result,
-            threshold_value,
-            force_unit_label=force_unit_label,
-            value_scale=unit_scale,
-        )
+        _save_plot(*payload)
     elif kind == "noise":
-        (
-            out_path,
-            dataset_stem,
-            rep_id,
-            noise_estimate,
-            force_unit_label,
-            unit_scale,
-        ) = payload
-        _save_noise_plot(
-            out_path,
-            dataset_stem,
-            rep_id,
-            noise_estimate,
-            force_unit_label=force_unit_label,
-            value_scale=unit_scale,
-        )
+        _save_noise_plot(*payload)
     else:  # pragma: no cover - defensive
         raise ValueError(f"Unknown plot job type: {kind}")
-
-
-def _run_plot_job(job: tuple[str, tuple[Any, ...]]) -> None:
-    kind, payload = job
-    _execute_plot_job(kind, payload)
 
 
 def _save_plot(
@@ -101,7 +64,6 @@ def _save_plot(
     rep_id: str,
     result: DetectionResult,
     threshold: float,
-    *,
     force_unit_label: str,
     value_scale: float,
 ) -> None:
@@ -163,7 +125,6 @@ def _save_noise_plot(
     dataset_stem: str,
     rep_id: str,
     noise: NoiseEstimate,
-    *,
     force_unit_label: str,
     value_scale: float,
 ) -> None:

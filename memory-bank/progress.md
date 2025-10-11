@@ -17,6 +17,14 @@
 - Plot generation is parallelised by default (4 workers) with optional PDF/SVG output
   and Cairo backend support for publication assets.
 - README refreshed with full CLI reference, performance guidance, and examples.
+- **Refactored for code clarity and maintainability**:
+  - **`slipstick/cli.py`**:
+    - Extracted duplicated directory creation logic into a helper function.
+    - Decomposed the long `main` function into smaller, more focused functions.
+  - **`slipstick/io.py`**:
+    - Simplified the `load_replicates` function by breaking it into smaller, single-responsibility functions.
+  - **`slipstick/plotting.py`**:
+    - Simplified the parallel plot generation logic.
 
 ## Current status
 🟢 Ready for ad‑hoc and publication workflows. The CLI denoises, scales units,

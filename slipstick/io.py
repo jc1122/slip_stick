@@ -14,16 +14,19 @@ import numpy as np
 from .models import Replicate
 
 
-def load_replicates(path: str | Path, *, encoding: str = "cp1250") -> List[Replicate]:
-    @dataclass
-    class _ReplicateBuilder:
-        offset: int
-        raw_label: str
-        time_vals: list[float] = field(default_factory=list)
-        force_vals: list[float] = field(default_factory=list)
-        disp_vals: list[float] = field(default_factory=list)
+@dataclass
+class _ReplicateBuilder:
+    offset: int
+    raw_label: str
+    time_vals: list[float] = field(default_factory=list)
+    force_vals: list[float] = field(default_factory=list)
+    disp_vals: list[float] = field(default_factory=list)
 
-    row_iter = _iter_csv_rows(Path(path), encoding=encoding)
+
+def _parse_header(
+    row_iter: Generator[List[str], None, None],
+) -> tuple[list[str], list[str], list[str]] | None:
+    """Parse the header of the CSV file and return the labels, names, and units rows."""
     header_rows: list[List[str]] = []
     for _ in range(3):
         try:
@@ -31,14 +34,20 @@ def load_replicates(path: str | Path, *, encoding: str = "cp1250") -> List[Repli
         except StopIteration:
             break
     if len(header_rows) < 3:
-        return []
+        return None
 
     columns = list(zip_longest(*header_rows, fillvalue=""))
     try:
         labels_row, names_row, units_row = [list(values) for values in zip(*columns)]
     except ValueError:
-        return []
+        return None
+    return labels_row, names_row, units_row
 
+
+def _create_replicate_builders(
+    labels_row: list[str], names_row: list[str], units_row: list[str]
+) -> list[_ReplicateBuilder]:
+    """Create a list of _ReplicateBuilder objects from the header rows."""
     n_cols = len(names_row)
     n_cols -= n_cols % 3  # enforce full triples
 
@@ -56,10 +65,13 @@ def load_replicates(path: str | Path, *, encoding: str = "cp1250") -> List[Repli
             continue
 
         builders.append(_ReplicateBuilder(offset=offset, raw_label=current_label))
+    return builders
 
-    if not builders:
-        return []
 
+def _populate_builders(
+    row_iter: Generator[List[str], None, None], builders: list[_ReplicateBuilder]
+) -> None:
+    """Populate the builders with data from the CSV."""
     for row in row_iter:
         row_len = len(row)
         for builder in builders:
@@ -74,6 +86,9 @@ def load_replicates(path: str | Path, *, encoding: str = "cp1250") -> List[Repli
             builder.force_vals.append(f)
             builder.disp_vals.append(d)
 
+
+def _build_replicates(builders: list[_ReplicateBuilder]) -> List[Replicate]:
+    """Build a list of Replicate objects from the builders."""
     replicates: List[Replicate] = []
     current_label = ""
     for builder in builders:
@@ -94,8 +109,24 @@ def load_replicates(path: str | Path, *, encoding: str = "cp1250") -> List[Repli
                 disp_mm=np.asarray(builder.disp_vals, dtype=float),
             )
         )
-
     return replicates
+
+
+def load_replicates(path: str | Path, *, encoding: str = "cp1250") -> List[Replicate]:
+    row_iter = _iter_csv_rows(Path(path), encoding=encoding)
+    header_info = _parse_header(row_iter)
+    if header_info is None:
+        return []
+    labels_row, names_row, units_row = header_info
+
+    builders = _create_replicate_builders(labels_row, names_row, units_row)
+
+    if not builders:
+        return []
+
+    _populate_builders(row_iter, builders)
+
+    return _build_replicates(builders)
 
 
 def _iter_csv_rows(path: Path, *, encoding: str) -> Generator[List[str], None, None]:

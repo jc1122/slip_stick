@@ -165,26 +165,27 @@ Naming & units
 
 ```mermaid
 flowchart TD
-  A[Load CSV -> `load_replicates()`] --> B{Have replicates?}
-  B -- No --> Z[Exit: print "No replicates found"]
-  B -- Yes --> C[CLI config & force rescaling]
+  A[Load CSV -> load_replicates()] --> B{Have replicates?}
+  B -- No --> Z[Exit: no replicates found]
+  B -- Yes --> C[Force rescaling to reporting width]
   C --> D[Estimate instrumental noise per replicate]
-  D --> E[Compute dataset-level peak & cutoff]
+  D --> E[Compute dataset-level peak & suggested cutoff]
   E --> F{Apply low-pass filter?}
-  F -- Yes --> G[Process replicates: Butterworth denoise]
+  F -- Yes --> G[Apply Butterworth denoise (zero-phase)]
   F -- No --> G[Skip denoise]
   G --> H[Analyse each replicate]
-  H --> I[Compute Savitzky–Golay baseline & residual]
-  I --> J[Detect spikes (peak finder) & compute spectra]
+  H --> I[Compute Savitzky-Golay baseline and residual]
+  I --> J[Detect spikes and compute spectra]
   J --> K[Print replicate summaries]
   K --> L[Aggregate noise & dataset summaries]
   L --> M{Plots requested?}
-  M -- Yes --> N[Render/save plots (analysis, noise, spectra)]
+  M -- Yes --> N[Render and save plots (analysis, noise, spectra)]
   M -- No --> O[No plots]
-  N --> P[Optionally save spectra summary image]
+  N --> P[Optionally save spectra summary]
   O --> P
-  P --> Q[Exit (0) - stdout contains summaries]
-  Z --> Q2[Exit (1)]
+  P --> Q[Exit (0): summaries on stdout]
+  Z --> Q2[Exit (1): no replicates]
+```
 ```
 
 ## CLI options (common)

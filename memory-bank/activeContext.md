@@ -9,6 +9,8 @@ All effort centres on `slipstick.py`. The script now:
 - Normalises forces to `cN / 25 mm` for reporting; threshold defaults to
   1.4 cN/25 mm.
 - Produces publication-ready plots with consistent styling and dataset labels.
+- Streams CSV rows to avoid duplicate parsing and rescales forces in place.
+- Generates plots in parallel (default four worker processes) and supports PDF/SVG.
 Summaries can be redirected to text files for archival alongside the plots.
 
 ## Operating constraints

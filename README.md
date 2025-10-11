@@ -1,171 +1,154 @@
 # Slip-stick spike finder
 
-`slipstick.py` is a small command-line helper for spotting slip–stick spikes in
-FTM 10 tensile tester exports. The script assumes the standard CSV structure
-(three header rows with replicate labels, time/force/displacement columns, and
-comma decimals) and keeps the workflow to three steps:
+`slipstick.py` is a command-line helper for spotting slip–stick spikes in fixed-format
+FTM 10 CSV exports. It:
 
-1. Load every replicate from the CSV file.
-2. Trim each trace to the 50–200 mm displacement window and estimate a smooth
-   baseline with a Savitzky–Golay filter.
-3. Report points where the detrended force exceeds the chosen threshold.
+- streams each replicate from the CSV (time, force, displacement) and rescales forces
+  to the requested reporting width/unit,
+- trims the trace to a configurable displacement window (default 50–200 mm),
+- estimates and subtracts a smooth Savitzky–Golay baseline,
+- applies an instrumental-noise-aware low-pass filter before spike detection, and
+- reports residual excursions above a force threshold (defaults to 1.4 cN / 25 mm).
+
+Optionally it renders per-replicate plots and noise diagnostics with a parallel
+matplotlib backend (default 4 worker processes), which keeps batch workflows fast.
+
+---
 
 ## Quick start
 
 ```bash
-python slipstick.py --input path/to/tensile.csv
+python slipstick.py --input datasets/20250317_C1E_rossella_internal.csv
 ```
 
-Optional flags:
-
-- `--disp-min` / `--disp-max`: displacement window (defaults 50–200 mm).
-- `--window-seconds`: Savitzky–Golay window length in seconds. Defaults to a long
-  window equal to 50% of the trimmed trace duration (minimum 4 s).
-- `--polyorder`: Savitzky–Golay polynomial order (default 3).
-- `--threshold`: absolute residual force threshold (default 0.014 in the reporting units).
-- `--plot-dir`: directory for PNG plots with spikes marked (requires matplotlib).
-  Plots show force and baseline against displacement plus the residual trace.
-- `--noise-disp-min`: lower displacement bound (mm) for the instrumental-noise
-  window (defaults to 1 mm).
-- `--noise-disp-max`: upper displacement bound (mm) for the instrumental-noise
-  window (defaults to 5 mm). The script detrends the force in this window with a
-  long Savitzky–Golay filter (window ≈ ½ of the displacement span) before
-  reporting noise statistics.
-- `--noise-plot-dir`: directory for PNG plots of the inferred noise. Each
-  replicate plot shows the raw force against the SavGol baseline, the detrended
-  residual trace, and a residual-force histogram; a dataset-level summary
-  gathers bias and residual spread (requires
-  matplotlib).
-- `--noise-force-max`: optional absolute force bound (N) that filters the noise
-  window to quieter samples.
-- `--noise-min-samples`: minimum number of samples used to characterise the
-  noise window (defaults to 40, with a fallback to the earliest samples if the
-  displacement bound supplies fewer points).
-- `--noise-force-onset`: absolute force (N) that marks the onset of specimen
-  engagement. Samples at or above this force are excluded from the noise window
-  (defaults to 0.2 N).
-- `--instrument-peak-hz`: override for the global instrumental-noise peak (Hz).
-- `--instrument-cutoff-hz`: override for the low-pass cutoff used during
-  denoising (Hz). When omitted the script derives the cutoff from the measured
-  peak and the `--instrument-cutoff-factor` (default 0.8).
-- `--instrument-cutoff-factor`: scaling factor applied to the common peak when
-  computing the cutoff (default 0.8).
-- `--collection-width-mm`: specimen width (mm) that the source data was
-  normalised to (default 90 mm).
-- `--report-width-mm`: target width (mm) for reporting (default 25 mm). Forces
-  and residuals are automatically rescaled and all outputs are expressed in
-  `<report-unit> / <report-width>`.
-- `--report-unit`: unit used for reporting (default `cN`). Choose `N` to keep
-  SI newtons or `cN` to scale values by ×100 for easier readability.
-
-Noise statistics are printed per replicate alongside the spike summary and
-collated per dataset to help tune detection thresholds. The script first
-collects the noise windows for every replicate, infers the dominant
-instrumental-noise peak shared by the machine (median of the replicate peaks),
-then applies a consistent 4th-order Butterworth low-pass filter derived from
-that peak to every replicate force trace. Forces are rescaled from the
-collection width to the reporting width before analysis, so summaries, plots,
-and thresholds are expressed in `<report-unit> / <report-width>` (bias is still
-reported, not removed); the chosen peak/cutoff is echoed in the summaries for
-traceability.
-
-### Instrumental noise estimation
-
-The first few millimetres of displacement (default 1–5 mm) are assumed to
-contain only instrumental noise. Inside that window the script:
-
-1. Filters out any samples whose absolute force exceeds `--noise-force-onset`
-   (default 0.2 N) or, if provided, `--noise-force-max`.
-2. Fits a Savitzky–Golay baseline with a long window (≈ ½ of the remaining
-   displacement span) to remove gradual ramps that precede the peel.
-3. Treats the residual about that baseline as pure noise.
-
-Per replicate the report provides:
-
-- `bias`: the mean level of the SavGol baseline (instrument zero error).
-- `std`: residual standard deviation after detrending.
-- `max_abs`: the extreme residual excursion observed.
-- `n`: the number of noise samples that satisfied the filters.
-
-When `--noise-plot-dir` is set, each PNG combines the raw and baseline force
-traces with a detrended residual plot and residual-force histogram, while the
-dataset summary plot stacks the biases and residual spreads for quick
-comparison. Use these plots to assess whether the tester was correctly zeroed
-and to decide on appropriate spike-detection thresholds.
-
-Output is a short report per replicate listing the time, displacement, and
-residual amplitude of each spike above the threshold. If no spikes are found in
-that window the replicate is marked clean.
-
-A per-dataset summary follows at the end, listing the spike count detected in
-each replicate plus the dataset total.
-
-Use the generated summaries (e.g., redirect to `summaries/<dataset>.txt`) to
-store results alongside the PNG plots:
+The command prints replicate summaries (noise statistics + spike list) and a
+dataset-level total. To archive the text output, redirect the CLI to `summaries/`.
 
 ```bash
-python slipstick.py --input datasets/<file>.csv --plot-dir plots > summaries/<file>.txt
+python slipstick.py --input datasets/<file>.csv > summaries/<file>.txt
 ```
 
-## Usage
+---
 
-Typical end-to-end invocation (publication-ready defaults):
+## CLI reference
 
-```bash
-# Analyse one dataset with denoising, cN/25 mm reporting, and plots
-python slipstick.py \
-  --input datasets/<file>.csv \
-  --plot-dir plots \
-  --noise-plot-dir noise_plots \
-  --collection-width-mm 90 \
-  --report-width-mm 25 \
-  --report-unit cN \
-  --threshold 0.014 \
-  > summaries/<file>.txt
-```
-
-Batch process all CSVs under `datasets/` (Bash):
-
-```bash
-for f in datasets/*.csv; do \
-  base=$(basename "$f" .csv); \
-  python slipstick.py --input "$f" \
-    --plot-dir plots --noise-plot-dir noise_plots \
-    --collection-width-mm 90 --report-width-mm 25 --report-unit cN \
-    --threshold 0.014 \
-    > "summaries/${base}.txt"; \
-done
-```
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--input`, `-i` | Path to the CSV file (required). | – |
+| `--disp-min` | Lower displacement bound (mm). | `50.0` |
+| `--disp-max` | Upper displacement bound (mm). | `200.0` |
+| `--window-seconds` | Savitzky–Golay window length in seconds (rounded to nearest odd sample count). If omitted, uses 50% of the trimmed trace, min 4 s. | auto |
+| `--polyorder` | Savitzky–Golay polynomial order. | `3` |
+| `--threshold` | Residual spike threshold in reporting units. The internal default is `0.0504 N`, equivalent to **1.4 cN / 25 mm** after scaling. | auto |
+| `--plot-dir` | Directory for analysis plots (force, baseline, residual). Creates `<dataset>_<replicate>.<ext>`. | not saved |
+| `--plot-workers` | Number of processes for plot generation. Useful values are 2–6; the default of 4 balances throughput and memory. | `4` |
+| `--plot-format` | Plot image format: `png`, `pdf`, or `svg`. | `png` |
+| `--noise-plot-dir` | Directory for instrumental-noise plots plus dataset summary. | not saved |
+| `--noise-disp-min` | Lower displacement bound (mm) for the noise window. | `1.0` |
+| `--noise-disp-max` | Upper displacement bound (mm) for the noise window. | `5.0` |
+| `--noise-force-max` | Optional absolute force limit (in reporting units) to keep quiet samples in the noise window. | none |
+| `--noise-min-samples` | Minimum number of samples used to characterise the noise window (falls back to earliest samples). | `40` |
+| `--noise-force-onset` | Absolute force (reporting units) that marks first specimen contact; samples above this are excluded from the noise estimate. | `0.2 N` at collection width |
+| `--instrument-peak-hz` | Global instrumental noise peak (Hz). Overrides replicate-level peak detection. | auto |
+| `--instrument-cutoff-hz` | Explicit low-pass cutoff (Hz). Overrides the derived cutoff. | auto |
+| `--instrument-cutoff-factor` | Scale factor applied to the common peak when deriving the low-pass cutoff. | `0.8` |
+| `--collection-width-mm` | Specimen width used to normalise the raw forces. | `90.0` |
+| `--report-width-mm` | Target width for reporting (forces are linearly rescaled). | `25.0` |
+| `--report-unit` | Output force unit: `N` or `cN`. | `cN` |
 
 Notes:
 
-- The script normalises forces from the collection width to the reporting
-  width, and presents values in the chosen `--report-unit`.
-- `--threshold` is applied in reporting units (default `0.014` ≡ 1.4 cN/25 mm).
-- Denoising is derived from a dataset-level, machine-dependent noise band and
-  applied consistently to all replicates in that dataset.
+- Any force threshold/gating argument is interpreted in the reporting width/unit.
+- When `--plot-dir` or `--noise-plot-dir` is supplied, the script spawns a pool of
+  worker processes; the job queue is flushed before returning, and failures bubble up.
+- Vector formats (`--plot-format pdf`/`svg`) can be combined with Cairo backends, e.g.
+  `MPLBACKEND=module://mplcairo.base python slipstick.py ...`.
+
+---
+
+## Usage examples
+
+### Single dataset with plots
+
+```bash
+python slipstick.py \
+  --input datasets/20250617_C1E_dolpap_external.csv \
+  --plot-dir plots/full_run/20250617_C1E_dolpap_external \
+  --noise-plot-dir noise_plots/full_run/20250617_C1E_dolpap_external
+```
+
+### Publication-friendly vector output
+
+```bash
+MPLBACKEND=module://mplcairo.base \
+python slipstick.py \
+  --input datasets/20250318_C1E_rossella_external.csv \
+  --plot-dir plots/pdf/20250318_C1E_rossella_external \
+  --noise-plot-dir noise_plots/pdf/20250318_C1E_rossella_external \
+  --plot-format pdf \
+  --plot-workers 4
+```
+
+### Batch all datasets
+
+```bash
+for f in datasets/*.csv; do
+  stem=$(basename "$f" .csv)
+  python slipstick.py \
+    --input "$f" \
+    --plot-dir "plots/full_run/$stem" \
+    --noise-plot-dir "noise_plots/full_run/$stem" \
+    --plot-workers 4 \
+    > "summaries/$stem.txt"
+done
+```
+
+---
+
+## Instrumental-noise workflow (summary)
+
+1. Gather samples inside `--noise-disp-min/max` before specimen engagement.
+2. Optionally clip by `--noise-force-max` and `--noise-force-onset`.
+3. Remove slow ramps with a long Savitzky–Golay filter and compute residual stats
+   (bias, standard deviation, max absolute residual).
+4. Estimate the dominant noise peak via FFT. The median peak across replicates
+   defines a Butterworth low-pass filter (scaled by `--instrument-cutoff-factor`).
+5. Apply the filter to every replicate before baseline fitting and peak detection.
+
+Per-replicate and dataset-level summaries print the key noise metrics and the
+applied cutoff so you can confirm the analysis band quickly.
+
+---
+
+## Performance tips
+
+- Leaving `--plot-workers` at 4 is a good default. Increase to ~6 if you have spare
+  CPU/RAM, or reduce to 1 when running in very tight environments.
+- Vector formats (PDF/SVG) typically render faster when using the Cairo backend
+  (`MPLBACKEND=module://mplcairo.base`) because they avoid rasterisation overhead.
+- The CSV loader streams rows, so memory use scales with the number of active replicates,
+  not the total row count.
+
+---
 
 ## Dependencies
 
-- Python 3.11+
-- NumPy (required)
-- SciPy (required for Savitzky–Golay detrending)
-- Matplotlib (optional — required only when using `--plot-dir` to emit PNG plots)
+- Python 3.9+
+- NumPy
+- SciPy
+- Matplotlib (only required when using `--plot-dir` and/or `--noise-plot-dir`)
+- Optional: `mplcairo` for fast vector backends (`pip install mplcairo`)
 
-Install the required libraries with:
+Install the essentials with:
 
 ```bash
 python -m pip install -r requirements.txt
 ```
 
-Add `matplotlib` if you plan to generate plots:
+---
 
-```bash
-python -m pip install matplotlib
-```
+## Data layout
 
-## Data
-
-Place CSV files under `datasets/` or pass absolute paths. The script never
-writes back to the datasets directory – results are printed to the console so
-you can redirect them to a file if needed.
+Place raw CSV files in `datasets/` (or supply absolute paths). The tool never mutates
+the input files; all artefacts are written to the directories you pass via the CLI
+and the textual summary goes to stdout.

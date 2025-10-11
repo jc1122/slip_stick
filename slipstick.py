@@ -9,10 +9,11 @@ import locale
 import re
 import sys
 import unicodedata
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass, field, replace
 from itertools import zip_longest
 from pathlib import Path
-from typing import Generator, List, Sequence
+from typing import Any, Generator, List, Sequence, Tuple
 
 import numpy as np
 from scipy.signal import butter, filtfilt, find_peaks, periodogram, savgol_filter
@@ -83,15 +84,16 @@ class NoiseEstimate:
     time_span_s: float
     sample_rate_hz: float | None
     noise_peak_hz: float | None
-    raw_force: np.ndarray = field(repr=False)
-    baseline_force: np.ndarray = field(repr=False)
-    residual_force: np.ndarray = field(repr=False)
-    time_s: np.ndarray = field(repr=False)
-    disp_mm: np.ndarray = field(repr=False)
+    raw_force: np.ndarray | None = field(default=None, repr=False)
+    baseline_force: np.ndarray | None = field(default=None, repr=False)
+    residual_force: np.ndarray | None = field(default=None, repr=False)
+    time_s: np.ndarray | None = field(default=None, repr=False)
+    disp_mm: np.ndarray | None = field(default=None, repr=False)
 
 
 # Defaults expressed in Newtons at the original collection width (before scaling).
-DEFAULT_THRESHOLD_FORCE_N = 0.014
+# 0.0504 N scales to 1.4 cN when reported at 25 mm by default.
+DEFAULT_THRESHOLD_FORCE_N = 0.0504
 DEFAULT_NOISE_FORCE_ONSET_N = 0.2
 
 
@@ -128,6 +130,16 @@ def main(argv: Sequence[str] | None = None) -> int:
             noise_plot_dir.mkdir(parents=True, exist_ok=True)
 
     dataset_stem = dataset_path.stem
+
+    plot_workers = 4
+    try:
+        plot_workers = int(args.plot_workers)
+    except (TypeError, ValueError):
+        plot_workers = 4
+    if plot_workers <= 0:
+        plot_workers = 4
+    plot_format = str(args.plot_format).lower()
+    plot_suffix = plot_format
 
     collection_width_mm = (
         args.collection_width_mm
@@ -170,15 +182,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         args.noise_force_onset, default_n=DEFAULT_NOISE_FORCE_ONSET_N
     )
 
-    scaled_replicates = [
-        replace(replicate, force_n=replicate.force_n * force_scale)
-        for replicate in replicates
-    ]
-    replicates = scaled_replicates
+    if force_scale != 1.0:
+        for replicate in replicates:
+            replicate.force_n *= force_scale
+
+    retain_noise_segments = noise_plot_dir is not None and plt is not None
 
     summary: list[tuple[str, int]] = []
     noise_summary: list[tuple[str, NoiseEstimate | None]] = []
     replicate_entries: list[tuple[Replicate, NoiseEstimate | None]] = []
+    plot_jobs: list[tuple[str, tuple[Any, ...]]] = []
 
     for replicate in replicates:
         noise_estimate = estimate_instrumental_noise(
@@ -188,6 +201,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             force_abs_max=noise_force_max,
             min_samples=args.noise_min_samples,
             force_onset=noise_force_onset,
+            retain_segments=retain_noise_segments,
         )
         noise_summary.append((replicate.rep_id, noise_estimate))
         if (
@@ -195,15 +209,33 @@ def main(argv: Sequence[str] | None = None) -> int:
             and plt is not None
             and noise_estimate is not None
         ):
-            noise_out = noise_plot_dir / f"{dataset_stem}_{replicate.rep_id}_noise.png"
-            _save_noise_plot(
-                noise_out,
-                dataset_stem,
-                replicate.rep_id,
-                noise_estimate,
-                force_unit_label=force_unit_label,
-                value_scale=unit_scale,
+            noise_out = (
+                noise_plot_dir
+                / f"{dataset_stem}_{replicate.rep_id}_noise.{plot_suffix}"
             )
+            if plot_workers == 1:
+                _save_noise_plot(
+                    noise_out,
+                    dataset_stem,
+                    replicate.rep_id,
+                    noise_estimate,
+                    force_unit_label=force_unit_label,
+                    value_scale=unit_scale,
+                )
+            else:
+                plot_jobs.append(
+                    (
+                        "noise",
+                        (
+                            noise_out,
+                            dataset_stem,
+                            replicate.rep_id,
+                            noise_estimate,
+                            force_unit_label,
+                            unit_scale,
+                        ),
+                    )
+                )
         replicate_entries.append((replicate, noise_estimate))
 
     common_peak_hz: float | None = None
@@ -291,16 +323,35 @@ def main(argv: Sequence[str] | None = None) -> int:
         summary.append((replicate.rep_id, len(result.spikes)))
 
         if plot_dir is not None and plt is not None:
-            out_path = plot_dir / f"{dataset_stem}_{replicate.rep_id}.png"
-            _save_plot(
-                out_path,
-                dataset_stem,
-                replicate.rep_id,
-                result,
-                threshold_value,
-                force_unit_label=force_unit_label,
-                value_scale=unit_scale,
-            )
+            out_path = plot_dir / f"{dataset_stem}_{replicate.rep_id}.{plot_suffix}"
+            if plot_workers == 1:
+                _save_plot(
+                    out_path,
+                    dataset_stem,
+                    replicate.rep_id,
+                    result,
+                    threshold_value,
+                    force_unit_label=force_unit_label,
+                    value_scale=unit_scale,
+                )
+            else:
+                plot_jobs.append(
+                    (
+                        "analysis",
+                        (
+                            out_path,
+                            dataset_stem,
+                            replicate.rep_id,
+                            result,
+                            threshold_value,
+                            force_unit_label,
+                            unit_scale,
+                        ),
+                    )
+                )
+
+    if plot_jobs:
+        _render_plot_jobs(plot_jobs, max_workers=plot_workers)
 
     _print_noise_totals(
         dataset_stem,
@@ -311,7 +362,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         common_cutoff_hz=base_cutoff_hz,
     )
     if noise_plot_dir is not None and plt is not None:
-        summary_out = noise_plot_dir / f"{dataset_stem}_noise_summary.png"
+        summary_out = noise_plot_dir / f"{dataset_stem}_noise_summary.{plot_suffix}"
         _save_noise_summary_plot(
             summary_out,
             dataset_stem,
@@ -361,9 +412,24 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--plot-dir",
         help=(
-            "Optional directory for PNG plots with spikes marked. "
-            "Requires matplotlib; files are named <dataset>_<replicate>.png."
+            "Optional directory for plots with spikes marked. "
+            "Requires matplotlib; files are named <dataset>_<replicate>.<ext>."
         ),
+    )
+    parser.add_argument(
+        "--plot-workers",
+        type=int,
+        default=4,
+        help=(
+            "Number of processes to use for generating plots (default 4). "
+            "Lower the value if memory is limited."
+        ),
+    )
+    parser.add_argument(
+        "--plot-format",
+        choices=["png", "pdf", "svg"],
+        default="png",
+        help="Image format for generated plots (default png).",
     )
     parser.add_argument(
         "--noise-plot-dir",
@@ -466,58 +532,85 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def load_replicates(path: str | Path, *, encoding: str = "cp1250") -> List[Replicate]:
-    rows = list(_iter_csv_rows(Path(path), encoding=encoding))
-    if len(rows) < 3:
+    @dataclass
+    class _ReplicateBuilder:
+        offset: int
+        raw_label: str
+        time_vals: list[float] = field(default_factory=list)
+        force_vals: list[float] = field(default_factory=list)
+        disp_vals: list[float] = field(default_factory=list)
+
+    row_iter = _iter_csv_rows(Path(path), encoding=encoding)
+    header_rows: list[List[str]] = []
+    for _ in range(3):
+        try:
+            header_rows.append(next(row_iter))
+        except StopIteration:
+            break
+    if len(header_rows) < 3:
         return []
 
-    header_rows = rows[:3]
     columns = list(zip_longest(*header_rows, fillvalue=""))
-    labels_row, names_row, units_row = [list(row) for row in zip(*columns)]
-    data_rows = rows[3:]
+    try:
+        labels_row, names_row, units_row = [
+            list(values) for values in zip(*columns)
+        ]
+    except ValueError:
+        return []
 
     n_cols = len(names_row)
     n_cols -= n_cols % 3  # enforce full triples
 
-    replicates: List[Replicate] = []
+    builders: list[_ReplicateBuilder] = []
     current_label = ""
 
     for offset in range(0, n_cols, 3):
         raw_label = labels_row[offset].strip()
         if raw_label:
             current_label = raw_label
-        if not current_label:
-            current_label = f"rep_{len(replicates) + 1}"
 
         name_triplet = [names_row[offset + i].strip() for i in range(3)]
         unit_triplet = [units_row[offset + i].strip() for i in range(3)]
         if not _looks_like_replicate(name_triplet, unit_triplet):
             continue
 
-        time_vals: List[float] = []
-        force_vals: List[float] = []
-        disp_vals: List[float] = []
+        builders.append(_ReplicateBuilder(offset=offset, raw_label=current_label))
 
-        for row in data_rows:
-            if len(row) <= offset + 2:
+    if not builders:
+        return []
+
+    for row in row_iter:
+        row_len = len(row)
+        for builder in builders:
+            if builder.offset + 2 >= row_len:
                 continue
-            t = _parse_float(row[offset])
-            f = _parse_float(row[offset + 1])
-            d = _parse_float(row[offset + 2])
+            t = _parse_float(row[builder.offset])
+            f = _parse_float(row[builder.offset + 1])
+            d = _parse_float(row[builder.offset + 2])
             if t is None or f is None or d is None:
                 continue
-            time_vals.append(t)
-            force_vals.append(f)
-            disp_vals.append(d)
+            builder.time_vals.append(t)
+            builder.force_vals.append(f)
+            builder.disp_vals.append(d)
 
-        if not time_vals:
+    replicates: List[Replicate] = []
+    current_label = ""
+    for builder in builders:
+        raw_label = builder.raw_label.strip()
+        if raw_label:
+            current_label = raw_label
+        if not current_label:
+            current_label = f"rep_{len(replicates) + 1}"
+
+        if not builder.time_vals:
             continue
 
         replicates.append(
             Replicate(
                 rep_id=_normalise_label(current_label, len(replicates) + 1),
-                time_s=np.asarray(time_vals, dtype=float),
-                force_n=np.asarray(force_vals, dtype=float),
-                disp_mm=np.asarray(disp_vals, dtype=float),
+                time_s=np.asarray(builder.time_vals, dtype=float),
+                force_n=np.asarray(builder.force_vals, dtype=float),
+                disp_mm=np.asarray(builder.disp_vals, dtype=float),
             )
         )
 
@@ -591,6 +684,7 @@ def estimate_instrumental_noise(
     force_abs_max: float | None,
     min_samples: int,
     force_onset: float | None,
+    retain_segments: bool = False,
 ) -> NoiseEstimate | None:
     if replicate.force_n.size == 0:
         return None
@@ -600,43 +694,37 @@ def estimate_instrumental_noise(
     if min_samples <= 0:
         min_samples = 1
 
-    noise_mask = (replicate.disp_mm >= disp_limit_min) & (
+    primary_mask = (replicate.disp_mm >= disp_limit_min) & (
         replicate.disp_mm <= disp_limit_max
     )
     if force_abs_max is not None and force_abs_max > 0:
-        noise_mask &= np.abs(replicate.force_n) <= force_abs_max
+        primary_mask &= np.abs(replicate.force_n) <= force_abs_max
 
-    indices = np.nonzero(noise_mask)[0]
+    indices = np.flatnonzero(primary_mask)
     target_count = min(min_samples, replicate.force_n.size)
     if indices.size == 0:
-        fallback_candidates = np.where(
-            (replicate.disp_mm >= disp_limit_min)
-            & (replicate.disp_mm <= disp_limit_max)
-        )[0]
-        indices = fallback_candidates[:target_count]
-
-    indices = indices[indices < replicate.force_n.size]
-    if indices.size == 0:
-        return None
-
-    indices.sort()
+        fallback_mask = (replicate.disp_mm >= disp_limit_min) & (
+            replicate.disp_mm <= disp_limit_max
+        )
+        indices = np.flatnonzero(fallback_mask)[:target_count]
 
     if indices.size == 0:
         return None
 
     force_segment = replicate.force_n[indices]
-    if force_onset is not None and force_onset > 0:
-        onset_mask = np.abs(force_segment) >= force_onset
-        if np.any(onset_mask):
-            first_contact_rel = int(np.where(onset_mask)[0][0])
-            indices = indices[:first_contact_rel]
-            force_segment = replicate.force_n[indices]
-
-    if indices.size == 0:
-        return None
-
     time_segment = replicate.time_s[indices]
     disp_segment = replicate.disp_mm[indices]
+
+    if force_onset is not None and force_onset > 0 and force_segment.size:
+        onset_mask = np.abs(force_segment) >= force_onset
+        if np.any(onset_mask):
+            first_contact_rel = int(np.flatnonzero(onset_mask)[0])
+            force_segment = force_segment[:first_contact_rel]
+            time_segment = time_segment[:first_contact_rel]
+            disp_segment = disp_segment[:first_contact_rel]
+
+    if force_segment.size == 0:
+        return None
 
     disp_span = (
         float(np.max(disp_segment) - np.min(disp_segment)) if disp_segment.size else 0.0
@@ -645,7 +733,8 @@ def estimate_instrumental_noise(
         disp_span = max(float(disp_limit_max - disp_limit_min), 1.0)
 
     polyorder = 2
-    baseline_force = np.full_like(force_segment, float(np.mean(force_segment)))
+    mean_force = float(np.mean(force_segment))
+    baseline_force = np.full_like(force_segment, mean_force)
     residual_force = force_segment - baseline_force
 
     if force_segment.size >= 5:
@@ -711,11 +800,17 @@ def estimate_instrumental_noise(
         time_span_s=time_span,
         sample_rate_hz=float(sample_rate) if sample_rate is not None else None,
         noise_peak_hz=noise_peak_hz,
-        raw_force=np.asarray(force_segment, dtype=float),
-        baseline_force=np.asarray(baseline_force, dtype=float),
-        residual_force=np.asarray(residual_force, dtype=float),
-        time_s=np.asarray(time_segment, dtype=float),
-        disp_mm=np.asarray(disp_segment, dtype=float),
+        raw_force=np.asarray(force_segment, dtype=float)
+        if retain_segments
+        else None,
+        baseline_force=np.asarray(baseline_force, dtype=float)
+        if retain_segments
+        else None,
+        residual_force=np.asarray(residual_force, dtype=float)
+        if retain_segments
+        else None,
+        time_s=np.asarray(time_segment, dtype=float) if retain_segments else None,
+        disp_mm=np.asarray(disp_segment, dtype=float) if retain_segments else None,
     )
 
 
@@ -903,6 +998,61 @@ def _print_summary(
     print()
 
 
+def _render_plot_jobs(
+    jobs: List[tuple[str, tuple[Any, ...]]], *, max_workers: int
+) -> None:
+    if not jobs:
+        return
+    if max_workers <= 1:
+        for kind, payload in jobs:
+            _execute_plot_job(kind, payload)
+        return
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
+        futures = [executor.submit(_run_plot_job, job) for job in jobs]
+        for future in as_completed(futures):
+            future.result()
+
+
+def _execute_plot_job(kind: str, payload: tuple[Any, ...]) -> None:
+    if plt is None:
+        return
+    if kind == "analysis":
+        out_path, dataset_stem, rep_id, result, threshold_value, force_unit_label, unit_scale = payload
+        _save_plot(
+            out_path,
+            dataset_stem,
+            rep_id,
+            result,
+            threshold_value,
+            force_unit_label=force_unit_label,
+            value_scale=unit_scale,
+        )
+    elif kind == "noise":
+        (
+            out_path,
+            dataset_stem,
+            rep_id,
+            noise_estimate,
+            force_unit_label,
+            unit_scale,
+        ) = payload
+        _save_noise_plot(
+            out_path,
+            dataset_stem,
+            rep_id,
+            noise_estimate,
+            force_unit_label=force_unit_label,
+            value_scale=unit_scale,
+        )
+    else:  # pragma: no cover - defensive
+        raise ValueError(f"Unknown plot job type: {kind}")
+
+
+def _run_plot_job(job: tuple[str, tuple[Any, ...]]) -> None:
+    kind, payload = job
+    _execute_plot_job(kind, payload)
+
+
 def _save_plot(
     out_path: Path,
     dataset_stem: str,
@@ -976,6 +1126,15 @@ def _save_noise_plot(
     value_scale: float,
 ) -> None:
     assert plt is not None
+
+    if (
+        noise.raw_force is None
+        or noise.baseline_force is None
+        or noise.residual_force is None
+        or noise.disp_mm is None
+        or noise.time_s is None
+    ):
+        raise ValueError("NoiseEstimate raw data required for plotting is missing.")
 
     fig = plt.figure(figsize=(9, 8))
     gs = fig.add_gridspec(3, 1, height_ratios=[2, 1, 1])

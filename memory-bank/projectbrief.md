@@ -1,7 +1,7 @@
 # Project brief
 
 ## Overview
-This repo now focuses on a single, lightweight script that detects slip–stick
+This repo now focuses on a small, lightweight Python package that detects slip–stick
 spikes in FTM 10 tensile tester CSV exports. The workflow is limited to loading
 the fixed-format file, detrending the 50–200 mm displacement segment with a
 Savitzky–Golay filter, and flagging residual force spikes.
@@ -23,6 +23,6 @@ Savitzky–Golay filter, and flagging residual force spikes.
 - Provide clear CLI usage instructions and sensible defaults.
 
 ## Scope
-Only the `slipstick.py` script and its supporting README/Memory Bank remain in
+Only the `slipstick` package and its supporting README/Memory Bank remain in
 scope. All previous detection scaffolds, extensive documentation, tests, and
 auxiliary scripts have been removed to keep the repository lean.

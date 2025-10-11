@@ -1,5 +1,7 @@
 # Generated analysis artifacts
-outputs/
+plots/
+noise_plots/
+summaries/
 
 # Runtime caches
 __pycache__/
@@ -8,8 +10,9 @@ __pycache__/
 .ruff_cache/
 .pre-commit-cache/
 
-# Local session logs
+# Secrets & local agent config
 .codex/
+.codex/github.env
 
 # Misc
 *.npz

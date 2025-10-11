@@ -1,14 +1,13 @@
 # System patterns
 
 ## Repository layout
-- Top-level `slipstick.py` contains the entire pipeline (CSV loader, Savitzky–Golay
-  smoother, spike detector, CLI).
+- `slipstick/` contains the entire pipeline, split into modules for I/O, core logic, plotting, and CLI.
 - `memory-bank/` stores lightweight documentation of scope, context, and progress.
 - `datasets/` is an optional landing zone for CSV files; the script accepts any
   path supplied via `--input`.
 
 ## Processing pattern
-1. Load the CSV with a custom parser that preserves decimal commas and groups
+1. Load the CSV with a custom parser in the `slipstick.io` module that preserves decimal commas and groups
    time/force/displacement columns into replicates.
 2. Characterise instrumental noise from the early displacement window; estimate
    the dominant band via FFT; derive a dataset‑level peak and apply a zero‑phase

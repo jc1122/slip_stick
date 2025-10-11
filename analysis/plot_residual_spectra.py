@@ -9,25 +9,17 @@ from math import ceil
 from pathlib import Path
 from typing import Iterable
 
-import sys
-
-
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
-
 import numpy as np
 from matplotlib import pyplot as plt
 from scipy.signal import butter, filtfilt, periodogram
 
-from slipstick import (
-    DEFAULT_NOISE_FORCE_ONSET_N,
-    DEFAULT_THRESHOLD_FORCE_N,
+from slipstick.cli import DEFAULT_NOISE_FORCE_ONSET_N, DEFAULT_THRESHOLD_FORCE_N
+from slipstick.core import (
     _analyse_replicate,
     _estimate_sampling_rate,
     estimate_instrumental_noise,
-    load_replicates,
 )
+from slipstick.io import load_replicates
 
 
 SPIKE_BANDS: list[tuple[str, float, float]] = [

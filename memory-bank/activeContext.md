@@ -1,7 +1,7 @@
 # Active context
 
 ## Current work focus
-All effort centres on `slipstick.py`. The script now:
+The codebase is now a Python package (`slipstick`). The CLI entry point is `slipstick.cli`. The package now:
 - Estimates a dataset-level instrumental noise band from the early (1–5 mm)
   window and applies zero‑phase low‑pass filtering.
 - Uses a long Savitzky–Golay window (50% of the trimmed trace, minimum 4 s)

@@ -10,6 +10,8 @@ Install mandatory dependencies with `python -m pip install -r requirements.txt`;
 `matplotlib` separately if you need plot output.
 
 ## Script structure
+- The `slipstick` package is organized into modules for models, I/O, core logic, and plotting.
+- The main CLI entry point is `slipstick.cli`.
 - CSV parsing relies on Python's built-in `csv` module with minor preprocessing to
   handle decimal commas and quoted headers.
 - Savitzky–Golay smoothing always uses SciPy's implementation.
@@ -17,5 +19,5 @@ Install mandatory dependencies with `python -m pip install -r requirements.txt`;
   contiguous regions.
 
 ## Usage
-Run the script directly with `python slipstick.py --input <path>` and adjust
+Run the script directly with `python -m slipstick.cli --input <path>` and adjust
 CLI flags for displacement range, smoothing window, or threshold as needed.

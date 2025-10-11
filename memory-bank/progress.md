@@ -1,6 +1,7 @@
 # Progress
 
 ## Recent updates
+- Refactored the codebase into a Python package (`slipstick`) with separate modules for I/O, core logic, and plotting.
 - Instrumental noise estimation added (early window detrending + FFT); datasets
   now use a common instrument band. A zero-phase 4th-order Butterworth low-pass
   filter is applied before baseline fitting and spike detection.

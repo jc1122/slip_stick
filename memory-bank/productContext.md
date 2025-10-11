@@ -18,7 +18,7 @@ CSV files without maintaining a large toolkit.
   annotated, provided matplotlib is available.
 
 ## How it works
-`slipstick.py` parses the CSV; rescales forces to the reporting width/unit; uses
+`slipstick.cli` parses the CSV; rescales forces to the reporting width/unit; uses
 the early (1–5 mm) window to estimate noise and a common instrument band per
 dataset; applies zero-phase low-pass filtering; keeps the 50–200 mm window;
 fits a Savitzky–Golay baseline; computes residuals; and groups contiguous

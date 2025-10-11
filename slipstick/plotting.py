@@ -51,7 +51,15 @@ def _execute_plot_job(kind: str, payload: tuple[Any, ...]) -> None:
     if plt is None:
         return
     if kind == "analysis":
-        out_path, dataset_stem, rep_id, result, threshold_value, force_unit_label, unit_scale = payload
+        (
+            out_path,
+            dataset_stem,
+            rep_id,
+            result,
+            threshold_value,
+            force_unit_label,
+            unit_scale,
+        ) = payload
         _save_plot(
             out_path,
             dataset_stem,

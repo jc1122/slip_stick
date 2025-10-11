@@ -35,9 +35,7 @@ def load_replicates(path: str | Path, *, encoding: str = "cp1250") -> List[Repli
 
     columns = list(zip_longest(*header_rows, fillvalue=""))
     try:
-        labels_row, names_row, units_row = [
-            list(values) for values in zip(*columns)
-        ]
+        labels_row, names_row, units_row = [list(values) for values in zip(*columns)]
     except ValueError:
         return []
 

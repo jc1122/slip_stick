@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import locale
 import sys
 from dataclasses import replace
@@ -10,10 +11,19 @@ from typing import Any, Sequence
 import numpy as np
 from scipy.signal import butter, filtfilt
 
-from .core import _analyse_replicate, _estimate_sampling_rate, estimate_instrumental_noise
+from .core import (
+    _analyse_replicate,
+    _estimate_sampling_rate,
+    estimate_instrumental_noise,
+)
 from .io import load_replicates
 from .models import NoiseEstimate, Replicate, Spike
-from .plotting import _render_plot_jobs, _save_noise_plot, _save_noise_summary_plot, _save_plot
+from .plotting import (
+    _render_plot_jobs,
+    _save_noise_plot,
+    _save_noise_summary_plot,
+    _save_plot,
+)
 
 # Configure numeric locale to support comma decimals when available.
 try:
@@ -39,9 +49,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     plot_dir: Path | None = None
     if args.plot_dir:
-        try:
-            import matplotlib.pyplot as plt
-        except ImportError:
+        if importlib.util.find_spec("matplotlib") is None:
             print(
                 "matplotlib is required for plotting; skipping --plot-dir output.",
                 file=sys.stderr,
@@ -52,9 +60,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     noise_plot_dir: Path | None = None
     if args.noise_plot_dir:
-        try:
-            import matplotlib.pyplot as plt
-        except ImportError:
+        if importlib.util.find_spec("matplotlib") is None:
             print(
                 "matplotlib is required for plotting; skipping --noise-plot-dir output.",
                 file=sys.stderr,
@@ -109,9 +115,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if threshold_value is None:
         raise ValueError("threshold resolution produced None")
 
-    noise_force_max = _resolve_force_argument(
-        args.noise_force_max, default_n=None
-    )
+    noise_force_max = _resolve_force_argument(args.noise_force_max, default_n=None)
     noise_force_onset = _resolve_force_argument(
         args.noise_force_onset, default_n=DEFAULT_NOISE_FORCE_ONSET_N
     )
@@ -138,10 +142,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             retain_segments=retain_noise_segments,
         )
         noise_summary.append((replicate.rep_id, noise_estimate))
-        if (
-            noise_plot_dir is not None
-            and noise_estimate is not None
-        ):
+        if noise_plot_dir is not None and noise_estimate is not None:
             noise_out = (
                 noise_plot_dir
                 / f"{dataset_stem}_{replicate.rep_id}_noise.{plot_suffix}"

@@ -132,15 +132,13 @@ def estimate_instrumental_noise(
         time_span_s=time_span,
         sample_rate_hz=float(sample_rate) if sample_rate is not None else None,
         noise_peak_hz=noise_peak_hz,
-        raw_force=np.asarray(force_segment, dtype=float)
-        if retain_segments
-        else None,
-        baseline_force=np.asarray(baseline_force, dtype=float)
-        if retain_segments
-        else None,
-        residual_force=np.asarray(residual_force, dtype=float)
-        if retain_segments
-        else None,
+        raw_force=np.asarray(force_segment, dtype=float) if retain_segments else None,
+        baseline_force=(
+            np.asarray(baseline_force, dtype=float) if retain_segments else None
+        ),
+        residual_force=(
+            np.asarray(residual_force, dtype=float) if retain_segments else None
+        ),
         time_s=np.asarray(time_segment, dtype=float) if retain_segments else None,
         disp_mm=np.asarray(disp_segment, dtype=float) if retain_segments else None,
     )

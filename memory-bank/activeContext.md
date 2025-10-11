@@ -1,6 +1,11 @@
-## Refactoring Opportunities
+## Current Focus
 
-- **Duplicated Analysis Logic:** The core analysis logic in `_analyse_residual` in `analysis/plot_residual_spectra.py` is a slightly modified version of the logic in `_analyse_replicate` in `slipstick/core.py`. Both functions perform Savitzky-Golay filtering and then calculate the residual.
-- **Repeated Plotting Code:** The plotting code in `analysis/plot_residual_spectra.py` and `slipstick/plotting.py` shares similarities in how subplots are created, styled, and saved.
-- **Argument Parsing:** Both `analysis/plot_residual_spectra.py` and `slipstick/cli.py` have their own argument parsing logic using `argparse`. Many of the arguments are similar (e.g., file paths, filter parameters).
-- **Redundant Noise Estimation Logic:** The logic for estimating instrumental noise is present in both `analysis/plot_residual_spectra.py` (in `_common_cutoff`) and `slipstick/cli.py` (in the `main` function). Both call `estimate_instrumental_noise` from `slipstick/core.py` but then have their own logic for handling the results.
+- **DRY Principle Refactoring Completed (October 2025)**: Successfully eliminated code duplication across the codebase with 11 new helper functions, reducing ~140 lines of duplicated code while maintaining full backward compatibility.
+- Residual spectrum plotting integrated into main CLI with `--spectra-plot-dir` and `--spectra-summary` options.
+- `analysis/plot_residual_spectra.py` serves as a thin wrapper forwarding to the CLI.
+- All core functionality validated and working correctly.
+
+## Next Steps
+- Consider CLI orchestration refactoring if additional entry points emerge
+- Evaluate adding machine-readable outputs (CSV/JSON) for automation users
+- Monitor instrument band stability across different rigs and sessions

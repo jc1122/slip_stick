@@ -10,7 +10,8 @@ Install mandatory dependencies with `python -m pip install -r requirements.txt`;
 `matplotlib` separately if you need plot output.
 
 ## Script structure
-- The `slipstick` package is organized into modules for models, I/O, core logic, and plotting.
+- The `slipstick` package is organized into modules for models, I/O, core logic, plotting, and utilities.
+- `slipstick.utils` provides common helper functions for force scaling and data transformations.
 - The main CLI entry point is `slipstick.cli`.
 - CSV parsing relies on Python's built-in `csv` module with minor preprocessing to
   handle decimal commas and quoted headers.

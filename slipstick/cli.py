@@ -12,13 +12,16 @@ import numpy as np
 
 from .core import _analyse_replicate, estimate_instrumental_noise, process_replicates
 from .io import load_replicates
-from .models import NoiseEstimate, Replicate, Spike
+from .models import DetectionResult, NoiseEstimate, Replicate, Spike
 from .plotting import (
     _render_plot_jobs,
     _save_noise_plot,
     _save_noise_summary_plot,
     _save_plot,
+    _save_residual_spectrum_plot,
+    save_residual_spectra_summary,
 )
+from .utils import scale_force_value
 
 # Configure numeric locale to support comma decimals when available.
 try:
@@ -48,6 +51,10 @@ class CliConfig:
     noise_force_onset: float | None
     plot_dir: Path | None
     noise_plot_dir: Path | None
+    plot_spectra_dir: Path | None
+    spectra_summary_path: Path | None
+    spectra_band_min: float | None
+    spectra_band_max: float | None
     plot_workers: int
     plot_suffix: str
     dataset_stem: str
@@ -66,6 +73,32 @@ def _ensure_plot_dir(dir_path: str | None, flag_name: str) -> Path | None:
     path = Path(dir_path)
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+
+def _build_plot_path(
+    base_dir: Path,
+    dataset_stem: str,
+    rep_id: str,
+    plot_type: str,
+    suffix: str
+) -> Path:
+    """Build a standardized plot output path.
+    
+    Args:
+        base_dir: Base directory for plots.
+        dataset_stem: Dataset file stem.
+        rep_id: Replicate identifier.
+        plot_type: Type of plot (e.g., 'noise', 'spectrum') or empty string.
+        suffix: File extension (e.g., 'png', 'pdf').
+    
+    Returns:
+        Complete path for the plot file.
+    """
+    if plot_type:
+        filename = f"{dataset_stem}_{rep_id}_{plot_type}.{suffix}"
+    else:
+        filename = f"{dataset_stem}_{rep_id}.{suffix}"
+    return base_dir / filename
 
 
 def _create_cli_config(args: argparse.Namespace, dataset_path: Path) -> CliConfig:
@@ -117,6 +150,33 @@ def _create_cli_config(args: argparse.Namespace, dataset_path: Path) -> CliConfi
     if plot_workers <= 0:
         plot_workers = 4
 
+    plot_dir = _ensure_plot_dir(args.plot_dir, "--plot-dir")
+    noise_plot_dir = _ensure_plot_dir(args.noise_plot_dir, "--noise-plot-dir")
+    plot_spectra_dir = _ensure_plot_dir(
+        getattr(args, "spectra_plot_dir", None), "--spectra-plot-dir"
+    )
+
+    spectra_summary_path: Path | None = None
+    summary_arg = getattr(args, "spectra_summary", None)
+    if summary_arg:
+        if importlib.util.find_spec("matplotlib") is None:
+            print(
+                "matplotlib is required for residual spectrum summaries; skipping --spectra-summary output.",
+                file=sys.stderr,
+            )
+        else:
+            spectra_summary_path = Path(summary_arg)
+            spectra_summary_path.parent.mkdir(parents=True, exist_ok=True)
+
+    spectra_band_min = getattr(args, "spectra_band_min", None)
+    spectra_band_max = getattr(args, "spectra_band_max", None)
+    if (
+        spectra_band_min is not None
+        and spectra_band_max is not None
+        and spectra_band_max <= spectra_band_min
+    ):
+        spectra_band_max = spectra_band_min + 0.1
+
     return CliConfig(
         collection_width_mm=collection_width_mm,
         report_width_mm=report_width_mm,
@@ -128,8 +188,12 @@ def _create_cli_config(args: argparse.Namespace, dataset_path: Path) -> CliConfi
         threshold_value=threshold_value,
         noise_force_max=noise_force_max,
         noise_force_onset=noise_force_onset,
-        plot_dir=_ensure_plot_dir(args.plot_dir, "--plot-dir"),
-        noise_plot_dir=_ensure_plot_dir(args.noise_plot_dir, "--noise-plot-dir"),
+        plot_dir=plot_dir,
+        noise_plot_dir=noise_plot_dir,
+        plot_spectra_dir=plot_spectra_dir,
+        spectra_summary_path=spectra_summary_path,
+        spectra_band_min=spectra_band_min,
+        spectra_band_max=spectra_band_max,
         plot_workers=plot_workers,
         plot_suffix=str(args.plot_format).lower(),
         dataset_stem=dataset_path.stem,
@@ -162,9 +226,12 @@ def _estimate_noise_for_replicates(
         )
         noise_summary.append((replicate.rep_id, noise_estimate))
         if config.noise_plot_dir is not None and noise_estimate is not None:
-            noise_out = (
-                config.noise_plot_dir
-                / f"{config.dataset_stem}_{replicate.rep_id}_noise.{config.plot_suffix}"
+            noise_out = _build_plot_path(
+                config.noise_plot_dir,
+                config.dataset_stem,
+                replicate.rep_id,
+                "noise",
+                config.plot_suffix
             )
             if config.plot_workers == 1:
                 _save_noise_plot(
@@ -201,8 +268,11 @@ def _analyse_replicates_and_plot(
     config: CliConfig,
     plot_jobs: list[tuple[str, tuple[Any, ...]]],
     args: argparse.Namespace,
-) -> tuple[list[tuple[str, int]], list[tuple[str, tuple[Any, ...]]]]:
+) -> tuple[
+    list[tuple[str, int]], list[tuple[str, tuple[Any, ...]]], list[tuple[str, DetectionResult | None]]
+]:
     summary: list[tuple[str, int]] = []
+    result_entries: list[tuple[str, DetectionResult | None]] = []
     for replicate, noise_estimate in replicate_entries:
         analysis_replicate = replicate_map.get(replicate.rep_id, replicate)
         effective_cutoff: float | None = base_cutoff_hz
@@ -227,6 +297,7 @@ def _analyse_replicates_and_plot(
                 unit_scale=config.unit_scale,
             )
             summary.append((replicate.rep_id, 0))
+            result_entries.append((replicate.rep_id, None))
             continue
 
         _print_summary(
@@ -241,11 +312,15 @@ def _analyse_replicates_and_plot(
             unit_scale=config.unit_scale,
         )
         summary.append((replicate.rep_id, len(result.spikes)))
+        result_entries.append((replicate.rep_id, result))
 
         if config.plot_dir is not None:
-            out_path = (
-                config.plot_dir
-                / f"{config.dataset_stem}_{replicate.rep_id}.{config.plot_suffix}"
+            out_path = _build_plot_path(
+                config.plot_dir,
+                config.dataset_stem,
+                replicate.rep_id,
+                "",
+                config.plot_suffix
             )
             if config.plot_workers == 1:
                 _save_plot(
@@ -272,7 +347,29 @@ def _analyse_replicates_and_plot(
                         ),
                     )
                 )
-    return summary, plot_jobs
+        if config.plot_spectra_dir is not None:
+            spectrum_out = _build_plot_path(
+                config.plot_spectra_dir,
+                config.dataset_stem,
+                replicate.rep_id,
+                "spectrum",
+                config.plot_suffix
+            )
+            spectrum_args = (
+                spectrum_out,
+                config.dataset_stem,
+                replicate.rep_id,
+                result,
+                config.force_unit_label,
+                config.unit_scale,
+                config.spectra_band_min,
+                config.spectra_band_max,
+            )
+            if config.plot_workers == 1:
+                _save_residual_spectrum_plot(*spectrum_args)
+            else:
+                plot_jobs.append(("spectrum", spectrum_args))
+    return summary, plot_jobs, result_entries
 
 
 def _calculate_common_frequencies(
@@ -332,7 +429,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     replicate_map = {rep.rep_id: rep for rep in processed_replicates}
 
-    summary, plot_jobs = _analyse_replicates_and_plot(
+    summary, plot_jobs, result_entries = _analyse_replicates_and_plot(
         replicate_entries,
         replicate_map,
         base_cutoff_hz,
@@ -344,6 +441,23 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if plot_jobs:
         _render_plot_jobs(plot_jobs, max_workers=config.plot_workers)
+
+    if config.spectra_summary_path is not None:
+        spectrum_inputs = [
+            (rep_id, result)
+            for rep_id, result in result_entries
+            if result is not None
+        ]
+        if spectrum_inputs:
+            save_residual_spectra_summary(
+                config.spectra_summary_path,
+                config.dataset_stem,
+                spectrum_inputs,
+                force_unit_label=config.force_unit_label,
+                value_scale=config.unit_scale,
+                band_min=config.spectra_band_min,
+                band_max=config.spectra_band_max,
+            )
 
     _print_noise_totals(
         config.dataset_stem,
@@ -389,7 +503,7 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help=(
             "Savitzky–Golay window duration in seconds (converted to nearest odd number of samples). "
-            "Defaults to a long window equal to 50% of the trimmed trace duration (minimum 4 s)."
+            "Defaults to a long window equal to 50%% of the trimmed trace duration (minimum 4 s)."
         ),
     )
     parser.add_argument(
@@ -425,6 +539,36 @@ def _build_parser() -> argparse.ArgumentParser:
         choices=["png", "pdf", "svg"],
         default="png",
         help="Image format for generated plots (default png).",
+    )
+    parser.add_argument(
+        "--spectra-plot-dir",
+        help=(
+            "Optional directory for per-replicate residual spectrum plots. "
+            "Requires matplotlib; files are named <dataset>_<replicate>_spectrum.<ext>."
+        ),
+    )
+    parser.add_argument(
+        "--spectra-summary",
+        help=(
+            "Optional path for a multi-panel residual spectrum summary image. "
+            "Requires matplotlib; the parent directory is created automatically."
+        ),
+    )
+    parser.add_argument(
+        "--spectra-band-min",
+        type=float,
+        default=1.8,
+        help=(
+            "Lower bound of the highlighted slip–stick band (Hz) in residual spectrum plots (default 1.8)."
+        ),
+    )
+    parser.add_argument(
+        "--spectra-band-max",
+        type=float,
+        default=2.4,
+        help=(
+            "Upper bound of the highlighted slip–stick band (Hz) in residual spectrum plots (default 2.4)."
+        ),
     )
     parser.add_argument(
         "--noise-plot-dir",
@@ -534,7 +678,7 @@ def _print_summary(
     unit_scale: float,
 ) -> None:
     print(f"Replicate {rep_id}")
-    display_threshold = threshold * unit_scale
+    display_threshold = scale_force_value(threshold, unit_scale)
     header_bits = [
         f"samples={sample_count}",
         f"threshold={display_threshold:.3f} {force_unit_label}",
@@ -546,9 +690,9 @@ def _print_summary(
             if noise_estimate.noise_peak_hz is not None
             else ""
         )
-        std_display = noise_estimate.std_n * unit_scale
-        bias_display = noise_estimate.dc_offset_n * unit_scale
-        max_display = noise_estimate.max_abs_n * unit_scale
+        std_display = scale_force_value(noise_estimate.std_n, unit_scale)
+        bias_display = scale_force_value(noise_estimate.dc_offset_n, unit_scale)
+        max_display = scale_force_value(noise_estimate.max_abs_n, unit_scale)
         line = (
             f"  noise: std={std_display:.5f} {force_unit_label} | "
             f"bias={bias_display:.5f} {force_unit_label} | "
@@ -569,7 +713,7 @@ def _print_summary(
         print("  No spikes above threshold in the selected displacement window.\n")
         return
     for spike in spikes:
-        residual_display = spike.residual_n * unit_scale
+        residual_display = scale_force_value(spike.residual_n, unit_scale)
         print(
             f"  time={spike.time_s:.3f} s | disp={spike.disp_mm:.3f} mm | "
             f"residual={residual_display:.4f} {force_unit_label} (idx {spike.index})"

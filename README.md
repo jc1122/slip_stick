@@ -43,6 +43,10 @@ python slipstick.py --input datasets/<file>.csv > summaries/<file>.txt
 | `--plot-dir` | Directory for analysis plots (force, baseline, residual). Creates `<dataset>_<replicate>.<ext>`. | not saved |
 | `--plot-workers` | Number of processes for plot generation. Useful values are 2–6; the default of 4 balances throughput and memory. | `4` |
 | `--plot-format` | Plot image format: `png`, `pdf`, or `svg`. | `png` |
+| `--spectra-plot-dir` | Directory for residual spectrum plots. Creates `<dataset>_<replicate>_spectrum.<ext>`. | not saved |
+| `--spectra-summary` | Path for a multi-panel residual spectrum summary image (parent folder auto-created). | not saved |
+| `--spectra-band-min` | Lower bound (Hz) of the highlighted slip–stick band for spectrum plots. | `1.8` |
+| `--spectra-band-max` | Upper bound (Hz) of the highlighted slip–stick band for spectrum plots. | `2.4` |
 | `--noise-plot-dir` | Directory for instrumental-noise plots plus dataset summary. | not saved |
 | `--noise-disp-min` | Lower displacement bound (mm) for the noise window. | `1.0` |
 | `--noise-disp-max` | Upper displacement bound (mm) for the noise window. | `5.0` |
@@ -87,6 +91,16 @@ python slipstick.py \
   --noise-plot-dir noise_plots/pdf/20250318_C1E_rossella_external \
   --plot-format pdf \
   --plot-workers 4
+```
+
+### Residual spectrum overview
+
+```bash
+python slipstick.py \
+  --input datasets/20250617_C1E_dolpap_external.csv \
+  --spectra-summary plots/residual_spectra/20250617_C1E_dolpap_external.png \
+  --spectra-band-min 1.8 \
+  --spectra-band-max 2.4
 ```
 
 ### Batch all datasets
@@ -136,7 +150,7 @@ applied cutoff so you can confirm the analysis band quickly.
 - Python 3.9+
 - NumPy
 - SciPy
-- Matplotlib (only required when using `--plot-dir` and/or `--noise-plot-dir`)
+- Matplotlib (only required when using `--plot-dir`, `--noise-plot-dir`, or the residual spectrum options)
 - Optional: `mplcairo` for fast vector backends (`pip install mplcairo`)
 
 Install the essentials with:

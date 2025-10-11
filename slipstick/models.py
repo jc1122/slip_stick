@@ -30,6 +30,9 @@ class DetectionResult:
     baseline: np.ndarray
     residual: np.ndarray
     spikes: List[Spike]
+    residual_freqs: np.ndarray | None = field(default=None, repr=False)
+    residual_power: np.ndarray | None = field(default=None, repr=False)
+    peak_freq_hz: float | None = field(default=None, repr=False)
 
 
 @dataclass

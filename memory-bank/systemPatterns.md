@@ -1,7 +1,7 @@
 # System patterns
 
 ## Repository layout
-- `slipstick/` contains the entire pipeline, split into modules for I/O, core logic, plotting, and CLI.
+- `slipstick/` contains the entire pipeline, split into modules for I/O, core logic, plotting, CLI, and utilities.
 - `memory-bank/` stores lightweight documentation of scope, context, and progress.
 - `datasets/` is an optional landing zone for CSV files; the script accepts any
   path supplied via `--input`.

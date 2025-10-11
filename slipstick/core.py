@@ -112,26 +112,13 @@ def estimate_instrumental_noise(
         window_samples = (
             int(round(window_disp / step)) if step > 0 else force_segment.size
         )
-        window_samples = max(window_samples, polyorder + 1, 3)
-        if window_samples % 2 == 0:
-            window_samples += 1
-        if window_samples > force_segment.size:
-            window_samples = (
-                force_segment.size
-                if force_segment.size % 2 == 1
-                else force_segment.size - 1
-            )
+        window_samples = _compute_savgol_window(
+            force_segment.size, window_samples, polyorder
+        )
         if window_samples > polyorder and window_samples >= 3:
-            try:
-                baseline_force = savgol_filter(
-                    force_segment,
-                    window_length=window_samples,
-                    polyorder=polyorder,
-                    mode="interp",
-                )
-                residual_force = force_segment - baseline_force
-            except ValueError:
-                pass
+            baseline_force, residual_force = _compute_baseline_and_residual(
+                force_segment, window_samples, polyorder, mode="interp"
+            )
 
     offset = float(np.mean(baseline_force))
     std = float(np.std(residual_force, ddof=1)) if residual_force.size > 1 else 0.0
@@ -144,15 +131,7 @@ def estimate_instrumental_noise(
     )
 
     sample_rate = _estimate_sampling_rate(time_segment)
-    noise_peak_hz: float | None = None
-    if sample_rate is not None and residual_force.size >= 8:
-        centered = residual_force - np.mean(residual_force)
-        freqs, power = periodogram(centered, fs=sample_rate, scaling="spectrum")
-        if power.size > 1:
-            power[0] = 0.0  # ignore DC
-            peak_index = int(np.argmax(power))
-            if peak_index > 0 and peak_index < freqs.size:
-                noise_peak_hz = float(freqs[peak_index])
+    _, _, noise_peak_hz = _find_peak_frequency(residual_force, sample_rate)
 
     return NoiseEstimate(
         std_n=std,
@@ -224,19 +203,17 @@ def _analyse_replicate(
         long_window_seconds = window_seconds
 
     window_length = _window_length_from_seconds(long_window_seconds, fs)
-    if window_length <= polyorder:
-        window_length = polyorder + 1
-    if window_length % 2 == 0:
-        window_length += 1
-    if window_length > force.size:
-        window_length = force.size if force.size % 2 == 1 else max(force.size - 1, 1)
+    window_length = _compute_savgol_window(force.size, window_length, polyorder)
     if window_length <= polyorder or window_length < 3:
         return None
 
-    baseline = _savgol(force, window_length=window_length, polyorder=polyorder)
-    residual = force - baseline
+    baseline, residual = _compute_baseline_and_residual(
+        force, window_length, polyorder, mode="mirror"
+    )
 
     spikes = _find_spikes(time, disp, residual, threshold)
+
+    freqs, power, peak_freq = _find_peak_frequency(residual, fs)
 
     return DetectionResult(
         time=time,
@@ -245,6 +222,9 @@ def _analyse_replicate(
         baseline=baseline,
         residual=residual,
         spikes=spikes,
+        residual_freqs=freqs,
+        residual_power=power,
+        peak_freq_hz=peak_freq,
     )
 
 
@@ -291,3 +271,91 @@ def _savgol(y: np.ndarray, *, window_length: int, polyorder: int) -> np.ndarray:
     return savgol_filter(
         y, window_length=window_length, polyorder=polyorder, mode="mirror"
     )
+
+
+def _compute_savgol_window(
+    sample_count: int,
+    target_samples: int,
+    polyorder: int,
+    min_samples: int = 3
+) -> int:
+    """Calculate valid Savitzky-Golay window length.
+    
+    Args:
+        sample_count: Total number of samples available.
+        target_samples: Desired window size in samples.
+        polyorder: Polynomial order for Savitzky-Golay filter.
+        min_samples: Minimum acceptable window size.
+    
+    Returns:
+        Valid odd window length suitable for savgol_filter.
+    """
+    window_length = max(target_samples, polyorder + 1, min_samples)
+    if window_length % 2 == 0:
+        window_length += 1
+    if window_length > sample_count:
+        window_length = sample_count if sample_count % 2 == 1 else max(sample_count - 1, 1)
+    return window_length
+
+
+def _compute_baseline_and_residual(
+    force: np.ndarray,
+    window_length: int,
+    polyorder: int,
+    mode: str = "mirror"
+) -> tuple[np.ndarray, np.ndarray]:
+    """Compute Savitzky-Golay baseline and residual for force data.
+    
+    Args:
+        force: Force data array.
+        window_length: Window length for Savitzky-Golay filter.
+        polyorder: Polynomial order for Savitzky-Golay filter.
+        mode: Edge handling mode ('mirror' or 'interp').
+    
+    Returns:
+        Tuple of (baseline, residual) arrays.
+    """
+    try:
+        baseline = savgol_filter(
+            force,
+            window_length=window_length,
+            polyorder=polyorder,
+            mode=mode
+        )
+        residual = force - baseline
+        return baseline, residual
+    except ValueError:
+        # Fallback for edge cases
+        baseline = np.full_like(force, np.mean(force))
+        residual = force - baseline
+        return baseline, residual
+
+
+def _find_peak_frequency(
+    residual: np.ndarray,
+    sampling_rate: float | None
+) -> tuple[np.ndarray, np.ndarray, float | None]:
+    """Find peak frequency in residual using periodogram.
+    
+    Args:
+        residual: Residual force data.
+        sampling_rate: Sampling rate in Hz.
+    
+    Returns:
+        Tuple of (frequencies, power, peak_frequency_hz).
+        Returns empty arrays and None if invalid input.
+    """
+    if sampling_rate is None or residual.size < 8:
+        return np.array([]), np.array([]), None
+    
+    centered = residual - np.mean(residual)
+    freqs, power = periodogram(centered, fs=sampling_rate, scaling="spectrum")
+    
+    if power.size > 1:
+        power[0] = 0.0  # ignore DC
+        peak_index = int(np.argmax(power))
+        if peak_index > 0 and peak_index < freqs.size:
+            peak_freq = float(freqs[peak_index])
+            return freqs, power, peak_freq
+    
+    return freqs, power, None

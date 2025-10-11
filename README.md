@@ -1,263 +1,263 @@
 # Slip-stick Spike Detection
 
-A command-line tool for detecting slip-stick spikes in tensile tester data from FTM 10 instruments. Analyzes force-displacement traces to identify sudden force excursions that indicate slip-stick behavior in adhesive materials.
+A compact command-line tool for finding slip–stick spikes in FTM 10 tensile-test CSVs.
 
-## What It Does
+It loads wide-format CSVs, characterises instrument noise, optionally denoises traces, subtracts a long Savitzky–Golay baseline to get residuals, detects spikes and prints concise summaries. Plots are optional.
 
-- **Loads** FTM 10 CSV files with automatic handling of European decimal format (commas)
-- **Filters** instrumental noise using dataset-level frequency analysis
-- **Detrends** force traces using Savitzky-Golay smoothing
-- **Detects** residual spikes above configurable thresholds
-- **Reports** spike locations, magnitudes, and statistics
-- **Visualizes** results with publication-quality plots (optional)
+## Table of contents
 
-## Quick Start
+- [Quick start](#quick-start)
+- [Concepts](#concepts)
+- [Workflow](#workflow)
+- [CLI reference (common)](#cli-reference-common)
+- [Examples](#examples)
+- [Troubleshooting](#troubleshooting)
+- [Contributing & tests](#contributing--tests)
 
-### Basic Analysis
-```bash
-# Analyze a single CSV file
-python -m slipstick.cli --input datasets/20250317_C1E_rossella_internal.csv
-```
-
-### With Visual Output
-```bash
-# Generate analysis plots
-python -m slipstick.cli \
-  --input datasets/20250317_C1E_rossella_internal.csv \
-  --plot-dir plots/
-```
-
-### Batch Processing
-```bash
-# Process all CSV files in a directory
-for file in datasets/*.csv; do
-  python -m slipstick.cli --input "$file" > "results/$(basename "$file" .csv).txt"
-done
-```
-
-## Use Cases
-
-### 1. **Quality Control** - Detect Adhesive Failures
-Monitor adhesive performance by identifying slip-stick events that indicate poor bonding or material defects.
-
-```bash
-# Check for spikes in production samples
-python -m slipstick.cli \
-  --input production_sample.csv \
-  --threshold 2.0 \
-  --disp-min 20 \
-  --disp-max 150
-```
-
-### 2. **Research Analysis** - Material Characterization
-Analyze how different formulations affect slip-stick behavior across multiple replicates.
-
-```bash
-# Compare material formulations
-python -m slipstick.cli \
-  --input formulation_A.csv \
-  --plot-dir results/formulation_A/ \
-  --spectra-summary results/formulation_A/spectra.png
-```
-
-### 3. **Instrument Validation** - Noise Characterization
-Understand instrumental noise characteristics and validate measurement quality.
-
-```bash
-# Analyze noise profile
-python -m slipstick.cli \
-  --input baseline_measurement.csv \
-  --noise-plot-dir noise_analysis/ \
-  --spectra-plot-dir frequency_analysis/
-```
-
-### 4. **Publication Figures** - High-Quality Visualizations
-Generate publication-ready plots with consistent styling and proper units.
-
-```bash
-# Create vector plots for publication
-MPLBACKEND=module://mplcairo.base python -m slipstick.cli \
-  --input sample_data.csv \
-  --plot-dir figures/ \
-  --plot-format pdf \
-  --report-unit cN \
-  --report-width-mm 25
-```
-
-## Command Reference
-
-### Core Options
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--input`, `-i` | Path to FTM 10 CSV file (required) | - |
-| `--disp-min` | Minimum displacement for analysis (mm) | 50.0 |
-| `--disp-max` | Maximum displacement for analysis (mm) | 200.0 |
-| `--threshold` | Spike detection threshold (reporting units) | 1.4 cN/25mm |
-
-### Analysis Options
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--window-seconds` | Savitzky-Golay window length (seconds) | auto (50% of trace) |
-| `--polyorder` | Savitzky-Golay polynomial order | 3 |
-| `--collection-width-mm` | Original specimen width (mm) | 90.0 |
-| `--report-width-mm` | Normalized reporting width (mm) | 25.0 |
-| `--report-unit` | Force unit: `N` or `cN` | cN |
-
-### Noise Filtering
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--noise-disp-min` | Noise window start (mm) | 1.0 |
-| `--noise-disp-max` | Noise window end (mm) | 5.0 |
-| `--instrument-cutoff-factor` | Filter cutoff scaling | 0.8 |
-
-### Output Options
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--plot-dir` | Directory for analysis plots | not saved |
-| `--noise-plot-dir` | Directory for noise diagnostic plots | not saved |
-| `--spectra-plot-dir` | Directory for frequency spectrum plots | not saved |
-| `--spectra-summary` | Multi-panel spectrum summary image | not saved |
-| `--plot-format` | Image format: `png`, `pdf`, `svg` | png |
-| `--plot-workers` | Parallel plot generation workers | 4 |
-
-## Example Workflows
-
-### Routine Quality Control
-```bash
-#!/bin/bash
-# Daily QC check for adhesive samples
-
-SAMPLE_DIR="daily_samples"
-RESULTS_DIR="qc_results"
-
-for csv_file in "$SAMPLE_DIR"/*.csv; do
-    base_name=$(basename "$csv_file" .csv)
-
-    # Run analysis with standard settings
-    python -m slipstick.cli \
-        --input "$csv_file" \
-        --plot-dir "$RESULTS_DIR/plots/$base_name" \
-        --threshold 1.5 \
-        > "$RESULTS_DIR/reports/$base_name.txt"
-
-    # Check for excessive spikes (more than 5)
-    spike_count=$(grep "spikes found" "$RESULTS_DIR/reports/$base_name.txt" | cut -d' ' -f1)
-    if [ "$spike_count" -gt 5 ]; then
-        echo "WARNING: $base_name has $spike_count spikes - investigate!"
-    fi
-done
-```
-
-### Research Study Analysis
-```bash
-#!/bin/bash
-# Analyze multiple conditions in a material study
-
-STUDY_DIR="material_study"
-OUTPUT_DIR="analysis_results"
-
-# Process each experimental condition
-for condition in A B C; do
-    echo "Analyzing condition $condition..."
-
-    python -m slipstick.cli \
-        --input "$STUDY_DIR/condition_${condition}.csv" \
-        --plot-dir "$OUTPUT_DIR/plots/condition_${condition}" \
-        --spectra-summary "$OUTPUT_DIR/spectra/condition_${condition}_spectra.png" \
-        --spectra-band-min 1.5 \
-        --spectra-band-max 2.5 \
-        --report-width-mm 25 \
-        > "$OUTPUT_DIR/reports/condition_${condition}.txt"
-done
-
-echo "Analysis complete. Check $OUTPUT_DIR for results."
-```
-
-### Instrument Calibration Check
-```bash
-# Verify instrument noise is within acceptable limits
-
-python -m slipstick.cli \
-    --input calibration_run.csv \
-    --noise-plot-dir calibration_check/ \
-    --noise-disp-min 0.5 \
-    --noise-disp-max 3.0 \
-    --instrument-cutoff-factor 0.7
-```
-
-## Output Format
-
-### Console Output
-```
-Replicate 1 _ 1
-  samples=1250 | threshold=1.400 cN / 25 mm
-  noise: std=0.045 cN / 25 mm | bias=0.012 cN / 25 mm | max_abs=0.234 cN / 25 mm | n=150 | disp≤5.0 mm | span=1.5 s
-  denoised: low-pass filter fc=8.50 Hz (instrument peak ≈ 10.63 Hz)
-  time=45.23 s | disp=127.8 mm | residual=2.145 cN / 25 mm (idx 892)
-
-Replicate 1 _ 2
-  samples=1248 | threshold=1.400 cN / 25 mm
-  noise: std=0.041 cN / 25 mm | bias=0.008 cN / 25 mm | max_abs=0.198 cN / 25 mm | n=148 | disp≤5.0 mm | span=1.5 s
-  denoised: low-pass filter fc=8.50 Hz (instrument peak ≈ 10.63 Hz)
-  No spikes above threshold in the selected displacement window.
-
-Summary for 20250317_C1E_rossella_internal
-  replicates: count=10 | median std=0.043 cN / 25 mm | mean std=0.044 cN / 25 mm | max abs noise=0.245 cN / 25 mm
-  bias: median=0.010 cN / 25 mm | range=(0.005, 0.015) cN / 25 mm
-  total noise samples: count=1485 | max disp used=5.0 mm
-  instrument peak≈10.63 Hz | applied cutoff≈8.50 Hz
-  spikes found: 1
-```
-
-### Generated Files
-- **Analysis plots**: `dataset_replicate.png` - Force trace, baseline, and detected spikes
-- **Noise plots**: `dataset_replicate_noise.png` - Noise estimation diagnostics
-- **Spectrum plots**: `dataset_replicate_spectrum.png` - Frequency analysis of residuals
-- **Summary spectra**: Multi-panel overview of all replicates' frequency content
-
-## Data Format
-
-### Input: FTM 10 CSV Format
-- **Header**: 3 rows (labels, names, units)
-- **Columns**: Time (s), Force (N), Displacement (mm) for each replicate
-- **Decimals**: European format with commas (automatically handled)
-- **Layout**: Multiple replicates in wide format
-
-Example CSV structure:
-```csv
-"1 _ 1",,,"1 _ 2",,,
-"Czas","Siła","Przemieszczenie","Czas","Siła","Przemieszczenie"
-"sec","N","mm","sec","N","mm"
-"0","0,094","0,001","0","0,001","0,001"
-"0,01","0,095","0,007","0,01","0,002","0,007"
-...
-```
-
-## Performance & Tips
-
-- **Memory efficient**: Streams CSV data, processes replicates independently
-- **Parallel plotting**: Uses multiple CPU cores for plot generation (default 4 workers)
-- **Vector output**: Use `MPLBACKEND=module://mplcairo.base` for fast PDF/SVG generation
-- **Batch processing**: Shell loops work well for processing multiple files
-- **Threshold tuning**: Start with default 1.4 cN/25mm, adjust based on your materials
+---
 
 ## Installation
 
+Install required packages:
+
 ```bash
-# Install core dependencies
 pip install numpy scipy
+```
 
-# Install with plotting support
-pip install numpy scipy matplotlib
+Optional plotting support:
 
-# Optional: Fast vector graphics
+```bash
+pip install matplotlib
+# optional: faster vector graphics
 pip install mplcairo
 ```
 
-## Requirements
+## Quick start
 
-- Python 3.9+
-- NumPy (required)
-- SciPy (required)
-- Matplotlib (optional, for plotting)
-- mplcairo (optional, for fast vector output)
+Analyze one file:
+
+```bash
+python -m slipstick.cli --input datasets/20250317_C1E_rossella_internal.csv
+```
+
+Produce plots:
+
+```bash
+python -m slipstick.cli --input datasets/20250317_C1E_rossella_internal.csv --plot-dir plots/
+```
+
+Batch processing (simple):
+
+```bash
+for f in datasets/*.csv; do
+  python -m slipstick.cli --input "$f" > "results/$(basename "$f" .csv).txt"
+done
+```
+
+## Concepts
+
+### Collection vs reporting width
+
+- collection width: the specimen width used during the test (CSV force values are normalised to this width). Set via `--collection-width-mm` (default 90 mm).
+- reporting width: the width used for printed summaries and plots. Set via `--report-width-mm` (default 25 mm).
+
+For consistency the tool rescales force values by factor = report_width_mm / collection_width_mm before analysis and output. Standard specimens use 25 mm; this project used 90 mm to reduce quantisation error on small residuals.
+
+### Noise window (defaults: `--noise-disp-min=1.0`, `--noise-disp-max=5.0`)
+
+- Purpose: sample a quiet pre-test interval to measure instrument background noise.
+- Why 1–5 mm: usually the specimen is not engaged in this range; <1 mm can include start-up transients, >5 mm may include engagement.
+- What is computed: residual standard deviation, DC offset (bias), max absolute residual, sample count, estimated sample rate, and a dominant noise frequency from the residual periodogram.
+
+Adjust `--noise-disp-min`/`--noise-disp-max` if your test sequence places the quiet window elsewhere.
+
+### Analysis window (defaults: `--disp-min=50.0`, `--disp-max=200.0`)
+
+- Purpose: the displacement interval where spikes are searched for.
+- Guidance: set `--disp-min` to the start of settled, plateau-like behaviour; exclude the early region (<~50 mm) that can contain artifacts. Set `--disp-max` to stop before test-end dynamics or failure events.
+
+## Workflow (what happens after data is loaded)
+
+High-level pipeline (textual):
+
+1. Rescale forces to the reporting width
+  - The tool rescales each replicate's `force_n` array by a linear factor = `report_width_mm / collection_width_mm`. For example, to report forces at 25 mm while the CSV was collected at 90 mm the factor is 25/90 and every recorded force value is multiplied by that factor. This ensures reported magnitudes and thresholds correspond to the requested reporting width.
+
+2. Estimate instrumental noise per replicate (`estimate_instrumental_noise`)
+  - A small displacement window (default 1–5 mm) is sampled from each replicate and used to estimate the instrument noise characteristics. In this project we deliberately choose the range 1–5 mm because it is expected to contain no specimen signal: this is typically the pre-test region where the specimen is not yet engaged and the measured force reflects instrument noise only. Displacements below 1 mm may include start-up or fixture-related transients, while displacements above 5 mm can include early specimen engagement and the onset of meaningful signal. This 1–5 mm window is therefore a pragmatic choice to capture instrument background noise while avoiding contamination from test dynamics. The function then:
+    - selects samples with displacement inside the noise window and optionally restricts to low absolute forces (avoid early contact) or truncates after specimen engagement;
+    - fits a simple long-window Savitzky–Golay baseline (or mean fallback) to remove slow ramps and computes the residuals;
+    - returns a `NoiseEstimate` containing the residual standard deviation, DC offset, maximum absolute residual, sample count, sample rate, and a dominant noise peak frequency computed from the residual periodogram.
+  - Why: these statistics characterise the instrument's short-range variability and provide a robust estimate of background noise for thresholding and filter design.
+
+3. Compute dataset-level instrument peak and suggested cutoff
+  - The CLI collects replicate-level noise peak frequencies and computes a central value (median) to represent the dataset's dominant instrument frequency. This `common_peak_hz` can be overridden by `--instrument-peak-hz`.
+  - A suggested low-pass filter cutoff is derived by scaling the peak by `--instrument-cutoff-factor` (default 0.8). This cutoff is used to design a zero-phase Butterworth filter applied to traces before spike analysis.
+  - What & why: the instrument sometimes introduces narrowband oscillations (mechanical or electrical). Identifying the instrument's dominant noise peak and low-pass filtering below that band reduces false-positive spikes caused by instrument vibration while preserving the slip–stick residual band of interest.
+5. Optional low-pass denoising (zero-phase Butterworth via `process_replicates`)
+   - Why: Narrowband instrument vibrations or electrical noise can introduce false-positive peaks in the residual. A conservative low-pass filter removes high-frequency instrument content while preserving low-frequency slip–stick features.
+   - How it works:
+     - Sampling rate estimation: the function estimates the sample rate from median positive time deltas in `replicate.time_s`.
+     - Cutoff selection: a cutoff frequency (Hz) is supplied from the dataset-level computation; the code bounds the cutoff below Nyquist (0.5 * fs) and reduces it slightly to avoid numerical edge effects.
+     - Filter design: a 4th-order Butterworth low-pass filter is designed (`butter(4, normalized_cutoff)`).
+     - Zero-phase filtering: the filter is applied with `filtfilt` (forward and reverse) so the filtered trace has no phase shift relative to the original—important to keep event times unchanged.
+     - Safety checks: the code computes a required padding length and only applies filtering when the replicate has more samples than the pad length; otherwise filtering is skipped to avoid artifacts.
+   - Result: `process_replicates` returns `Replicate` objects where `force_n` has been optionally replaced with the filtered trace.
+
+6. Baseline estimation and residual calculation per replicate (`_analyse_replicate`)
+   - Purpose: compute a slowly-varying baseline representing drift/ramps and subtract it from the force trace to expose short-lived slip–stick residuals.
+   - Steps:
+     - Crop to analysis window: retain only samples with `disp_mm` between `--disp-min` and `--disp-max` (defaults 50–200 mm).
+     - Sanity checks: require more samples than `polyorder + 1` and an estimable sampling rate; otherwise the replicate is skipped.
+     - Window selection for Savitzky–Golay: if `--window-seconds` is not provided, a long window equal to 50% of the trimmed trace duration is used (minimum 4 s); otherwise the provided seconds are converted to a nearest odd number of samples for the current sampling rate.
+     - Safe windowing: `_compute_savgol_window` ensures the window length is odd, respects the polynomial order and does not exceed the available sample count (falls back to a smaller odd window if needed).
+     - Baseline & residual: `_compute_baseline_and_residual` applies `savgol_filter` (mode mirror or interp fallback) to compute the baseline, then residual = force − baseline.
+   - Output: a `DetectionResult` containing cropped `time`, `disp`, `force`, `baseline`, `residual`, plus eventual spikes and spectral information.
+
+7. Spike detection and residual spectral analysis
+   - Spike detection (`_find_spikes`):
+     - The algorithm uses SciPy's `find_peaks` on the absolute residual (abs(residual)) with `height=threshold`.
+     - Each detected peak corresponds to a local maximum in the absolute residual that exceeds the threshold; contiguous multi-sample excursions are reported as a single peak if they contain a single local maximum.
+     - The code constructs `Spike` objects (index, time_s, disp_mm, residual_n) for every found peak.
+   - Residual spectrum (`_find_peak_frequency`):
+     - The residual is demeaned and a periodogram is computed to obtain a power spectrum (frequencies and power).
+     - DC is ignored and the frequency with maximum power is identified as the peak frequency (if the residual has enough samples).
+     - This peak is used for diagnostics and (together with the cutoff factor) to design the optional denoising filter.
+
+8. Summaries and optional plotting
+   - Per-replicate summaries (`print_replicate_summary`):
+     - Prints sample count, display threshold (scaled to `--report-unit` and `--report-width-mm`), noise statistics (std, bias, max abs), applied filter cutoff (if used), and the list of detected spikes (time, disp, residual displayed in the requested unit).
+   - Dataset-level noise summary (`print_noise_summary`):
+     - Aggregates replicate-level noise estimates and prints median/std statistics, total noise sample count, and common instrument peak/cutoff info.
+   - Plotting (optional):
+     - If `--plot-dir`, `--noise-plot-dir`, `--spectra-plot-dir`, or `--spectra-summary` are provided and matplotlib is available, the CLI schedules or saves plots:
+       - Analysis plots: force trace, Savitzky–Golay baseline, residual and marked spikes.
+       - Noise plots: raw noise samples, baseline and residual used to estimate instrument noise.
+       - Spectrum plots: residual periodogram with highlighted bands.
+     - Plot jobs are named consistently using the dataset stem and replicate id and can be rendered in parallel using `--plot-workers`.
+     - If matplotlib is not installed, plotting is skipped and a warning is printed to stderr.
+
+Plot outputs (what you'll see)
+
+- Analysis plot (per replicate)
+  - Purpose: visual check of the baseline fit, residuals and detected spikes.
+  - Typical layout: top panel shows the (optionally denoised) force trace vs displacement or time with the Savitzky–Golay baseline overlaid; middle panel shows the residual trace (force − baseline) with the detection threshold drawn and detected spike indices marked; optional inset or bottom panel may show a zoom around detected events.
+  - Labels: time (s) and/or displacement (mm) on the x-axis and force in the chosen report unit (N or cN) on the y-axis.
+
+- Noise plot (per replicate)
+  - Purpose: inspect the samples used to estimate instrument noise and verify that the chosen noise window is quiet.
+  - Typical layout: raw force samples from the noise window, the long-window baseline used to remove ramps, and the residuals (histogram or time series). The plot is annotated with computed statistics (std, bias, max_abs) and the sample count used.
+
+- Spectrum plot (per replicate)
+  - Purpose: show the residual periodogram and highlight the band of interest (e.g., the slip–stick band).
+  - Typical layout: power (or PSD) vs frequency with DC suppressed, the dataset-level or replicate peak frequency annotated, and the configured band ( `--spectra-band-min` / `--spectra-band-max` ) shaded.
+
+- Spectra summary (multi-replicate)
+  - Purpose: compare residual spectra across all analysed replicates in a single image to spot common peaks or outliers.
+  - Typical layout: small multiples (one panel per replicate) showing residual power vs frequency; may include a summary inset or a pooled overlay to visualise the median behaviour.
+
+Naming & units
+
+- Files are named using the dataset stem and replicate id (for example `dataset_replicate.png` or `dataset_replicate_spectrum.png`). The plot suffix uses the `--plot-format` choice.
+- All force values in plots are scaled to the selected reporting width and `--report-unit`.
+
+### Visual workflow
+
+```mermaid
+flowchart TD
+  A[Load CSV -> `load_replicates()`] --> B{Have replicates?}
+  B -- No --> Z[Exit: print "No replicates found"]
+  B -- Yes --> C[CLI config & force rescaling]
+  C --> D[Estimate instrumental noise per replicate]
+  D --> E[Compute dataset-level peak & cutoff]
+  E --> F{Apply low-pass filter?}
+  F -- Yes --> G[Process replicates: Butterworth denoise]
+  F -- No --> G[Skip denoise]
+  G --> H[Analyse each replicate]
+  H --> I[Compute Savitzky–Golay baseline & residual]
+  I --> J[Detect spikes (peak finder) & compute spectra]
+  J --> K[Print replicate summaries]
+  K --> L[Aggregate noise & dataset summaries]
+  L --> M{Plots requested?}
+  M -- Yes --> N[Render/save plots (analysis, noise, spectra)]
+  M -- No --> O[No plots]
+  N --> P[Optionally save spectra summary image]
+  O --> P
+  P --> Q[Exit (0) - stdout contains summaries]
+  Z --> Q2[Exit (1)]
+```
+
+## CLI options (common)
+
+Core options:
+
+| Option | Meaning | Default |
+|---|---:|---:|
+| `--input`, `-i` | Path to CSV file | (required) |
+| `--disp-min` | Analysis lower displacement (mm) — beginning of clean data; values <50 mm may include start-up artifacts. Choose a value where the trace has settled into a plateau. | 50.0 |
+| `--disp-max` | Analysis upper displacement (mm) — end of analysis window; prefer a plateau region before the test end or large events. Avoid including the measurement end where dynamics change. | 200.0 |
+| `--threshold` | Detection threshold (report unit) | None (defaults applied) |
+
+Noise / filtering:
+
+| Option | Meaning | Default |
+|---|---:|---:|
+| `--noise-disp-min` | Start of noise window (mm) | 1.0 |
+| `--noise-disp-max` | End of noise window (mm) | 5.0 |
+| `--instrument-cutoff-factor` | Cutoff scaling factor | 0.8 |
+
+Noise window guidance
+
+- `--noise-disp-min` and `--noise-disp-max` define the small displacement interval used to sample instrument noise for each replicate. By default these are 1.0–5.0 mm.
+- Purpose: this range is chosen to lie before the specimen engages so the measured signal reflects instrument background noise rather than specimen response. In many tests the pre-test region (1–5 mm) contains only instrument noise because the specimen is still loose or not under load.
+- Caveats: displacements below ~1 mm can include start-up transients, seating effects or fixture contact; displacements above ~5 mm may begin to show the specimen engaging and the first valid signal. If your instrument/test sequence differs, adjust `--noise-disp-min` and `--noise-disp-max` to a quiet region in your traces.
+
+
+Plotting & output:
+
+| Option | Meaning | Default |
+|---|---:|---:|
+| `--plot-dir` | Directory for analysis plots | not saved |
+| `--noise-plot-dir` | Directory for noise plots | not saved |
+| `--spectra-plot-dir` | Directory for spectra plots | not saved |
+| `--spectra-summary` | Path for multi-panel spectra image | not saved |
+
+For the full CLI reference see `slipstick/cli.py`.
+
+Guidance on selecting the analysis window
+
+- `--disp-min` should mark the start of the region where the measured force is stable and representative of the test plateau. The range below ~50 mm often contains start-up transients or fixture seating and so is usually excluded.
+- `--disp-max` should stop before test-end dynamics, large events, or specimen failure; together `--disp-min` and `--disp-max` should enclose a relatively flat plateau where slip–stick events are expected to appear as short residual excursions.
+
+## Examples
+
+Routine QC (per-file report + plots):
+
+```bash
+python -m slipstick.cli --input sample.csv --plot-dir qc_plots/ --threshold 1.5
+```
+
+Generate vector publication figures:
+
+```bash
+MPLBACKEND=module://mplcairo.base python -m slipstick.cli --input sample.csv --plot-dir figures/ --plot-format pdf --report-unit cN
+```
+
+## Troubleshooting
+
+- "No replicates found": verify the file has three header rows and column triples in time/force/displacement order.
+- Incorrect numeric parsing: check decimal separators and file encoding; the loader defaults to `cp1250` and supports comma decimals.
+- No spikes detected: try lowering the `--threshold` or verify the analysis displacement window covers the region of interest.
+
+## Contributing & tests
+
+Run unit tests with the included test file:
+
+```bash
+python test_refactoring.py
+```
+
+## License
+
+MIT-style (see repository for details).
+

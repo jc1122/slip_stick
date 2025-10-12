@@ -285,4 +285,3 @@ python test_refactoring.py
 ## License
 
 MIT-style (see repository for details).
-

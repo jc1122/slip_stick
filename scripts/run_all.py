@@ -5,9 +5,10 @@ Saves analysis plots to plots/analysis, noise plots to plots/noise, spectra to p
 and writes textual summaries to summaries/<dataset>.txt. Also creates a per-dataset
 spectra summary image under plots/spectra.
 """
+
 from pathlib import Path
-from subprocess import run, CalledProcessError
-from time import perf_counter, sleep
+from subprocess import run
+from time import perf_counter
 import json
 import math
 import os
@@ -15,11 +16,20 @@ import argparse
 from multiprocessing import cpu_count
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import psutil
+from typing import Tuple, Dict, Any
 
 
-def _worker(args_tuple):
+def _worker(args_tuple: Tuple[str, str, str, str, str, str, int]) -> Dict[str, Any]:
     # Runs in worker process
-    fpath, plot_dir_s, noise_dir_s, spec_dir_s, spec_summary_s, summaries_dir_s, plot_workers = args_tuple
+    (
+        fpath,
+        plot_dir_s,
+        noise_dir_s,
+        spec_dir_s,
+        spec_summary_s,
+        summaries_dir_s,
+        plot_workers,
+    ) = args_tuple
     f = Path(fpath)
     stem = f.stem
     out_summary = Path(summaries_dir_s) / f"{stem}.txt"
@@ -97,17 +107,33 @@ def _worker(args_tuple):
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run slipstick analysis across all CSV datasets")
-    parser.add_argument("--slipstick-workers", type=int, default=1, 
-                       help="Number of concurrent slipstick jobs (default: 1)")
-    parser.add_argument("--plot-workers", type=int, default=1,
-                       help="Number of plot workers per slipstick job (default: 1)")
-    parser.add_argument("--max-datasets", type=int, default=None,
-                       help="Limit number of datasets to process (default: all)")
+    parser = argparse.ArgumentParser(
+        description="Run slipstick analysis across all CSV datasets"
+    )
+    parser.add_argument(
+        "--slipstick-workers",
+        type=int,
+        default=1,
+        help="Number of concurrent slipstick jobs (default: 1)",
+    )
+    parser.add_argument(
+        "--plot-workers",
+        type=int,
+        default=1,
+        help="Number of plot workers per slipstick job (default: 1)",
+    )
+    parser.add_argument(
+        "--max-datasets",
+        type=int,
+        default=None,
+        help="Limit number of datasets to process (default: all)",
+    )
     args = parser.parse_args()
-    
-    print(f"Starting run_all.py with {args.slipstick_workers} slipstick workers, {args.plot_workers} plot workers per job")
-    
+
+    print(
+        f"Starting run_all.py with {args.slipstick_workers} slipstick workers, {args.plot_workers} plot workers per job"
+    )
+
     workspace = Path(__file__).resolve().parents[1]
     dataset_dir = workspace / "datasets"
     plot_dir = workspace / "plots" / "analysis"
@@ -125,7 +151,7 @@ def main() -> int:
         return 1
 
     # Build job list with atomic lock creation to avoid duplicates
-    jobs = []
+    jobs: list[Tuple[str, str, str, str, str, str, int]] = []
     for f in csvs:
         stem = f.stem
         out_summary = summaries_dir / f"{stem}.txt"
@@ -143,7 +169,17 @@ def main() -> int:
             print(f"Skipping {f.name} (lock exists)")
             continue
 
-        jobs.append((str(f), str(plot_dir), str(noise_dir), str(spec_dir), str(spec_summary), str(summaries_dir), args.plot_workers))
+        jobs.append(
+            (
+                str(f),
+                str(plot_dir),
+                str(noise_dir),
+                str(spec_dir),
+                str(spec_summary),
+                str(summaries_dir),
+                args.plot_workers,
+            )
+        )
 
     total = len(jobs)
     print(f"Built {total} jobs")
@@ -153,33 +189,36 @@ def main() -> int:
 
     # Limit datasets if specified
     if args.max_datasets:
-        jobs = jobs[:args.max_datasets]
+        jobs = jobs[: args.max_datasets]
         total = len(jobs)
         print(f"Limited to {total} datasets")
 
-    metrics = []
+    metrics: list[Dict[str, Any]] = []
     start_all = perf_counter()
     print(f"Process started at {start_all:.1f}s")
-    
+
     # Use specified number of slipstick workers
     max_workers = min(args.slipstick_workers, cpu_count())
-    print(f"Submitting {total} jobs with up to {max_workers} slipstick workers (each using {args.plot_workers} plot workers)")
+    print(
+        f"Submitting {total} jobs with up to {max_workers} slipstick workers (each using {args.plot_workers} plot workers)"
+    )
 
     # Start CPU monitoring in background
-    cpu_samples = []
+    cpu_samples: list[float] = []
     monitoring = True
-    
+
     def monitor_cpu():
         while monitoring:
             cpu_percent = psutil.cpu_percent(interval=1)
             cpu_samples.append(cpu_percent)
-    
+
     import threading
+
     monitor_thread = threading.Thread(target=monitor_cpu, daemon=True)
     monitor_thread.start()
 
     # Submit jobs to executor
-    futures = {}
+    futures: dict[Any, str] = {}
     submit_start = perf_counter()
     print(f"All jobs submitted at {submit_start - start_all:.1f}s elapsed")
     with ProcessPoolExecutor(max_workers=max_workers) as ex:
@@ -198,12 +237,15 @@ def main() -> int:
 
         completed = 0
         for fut in as_completed(futures):
+            result: Dict[str, Any]
             try:
                 result = fut.result()
             except Exception as exc:
                 # If the worker crashed, attempt to recover lock removal and record failure
                 dataset_path = futures.get(fut, "unknown")
-                stem = Path(dataset_path).stem if dataset_path != "unknown" else "unknown"
+                stem = (
+                    Path(dataset_path).stem if dataset_path != "unknown" else "unknown"
+                )
                 lock_file = summaries_dir / f"{stem}.lock"
                 if lock_file.exists():
                     try:
@@ -227,7 +269,9 @@ def main() -> int:
             completed += 1
             # remove inprogress marker if present
             try:
-                inprog = Path(summaries_dir) / f"{Path(result['dataset']).stem}.inprogress"
+                inprog = (
+                    Path(summaries_dir) / f"{Path(result['dataset']).stem}.inprogress"
+                )
                 if inprog.exists():
                     inprog.unlink()
             except Exception:
@@ -245,44 +289,54 @@ def main() -> int:
 
     total_time = perf_counter() - start_all
     completion_time = perf_counter()
-    print(f"All jobs completed at {completion_time - start_all:.1f}s elapsed (processing took {total_time:.1f}s)")
-    
+    print(
+        f"All jobs completed at {completion_time - start_all:.1f}s elapsed (processing took {total_time:.1f}s)"
+    )
+
     bench_out = summaries_dir / "benchmarks.json"
-    
+
     # Calculate CPU usage statistics
     if cpu_samples:
         avg_cpu = sum(cpu_samples) / len(cpu_samples)
         max_cpu = max(cpu_samples)
         min_cpu = min(cpu_samples)
-        cpu_stats = {
+        cpu_stats: Dict[str, Any] = {
             "avg_cpu_percent": round(avg_cpu, 1),
             "max_cpu_percent": round(max_cpu, 1),
             "min_cpu_percent": round(min_cpu, 1),
-            "cpu_samples_count": len(cpu_samples)
+            "cpu_samples_count": len(cpu_samples),
         }
-        print(f"\nCPU Usage: Avg {avg_cpu:.1f}%, Max {max_cpu:.1f}%, Min {min_cpu:.1f}%")
+        print(
+            f"\nCPU Usage: Avg {avg_cpu:.1f}%, Max {max_cpu:.1f}%, Min {min_cpu:.1f}%"
+        )
     else:
         cpu_stats = {"error": "No CPU samples collected"}
-    
+
     with bench_out.open("w") as fh:
-        json.dump({
-            "cpu_count": cpu_count(), 
-            "total_time_s": round(total_time, 3),
-            "submit_time_s": round(submit_start - start_all, 3),
-            "processing_time_s": round(completion_time - submit_start, 3),
-            "cpu_stats": cpu_stats,
-            "config": {
-                "slipstick_workers": args.slipstick_workers,
-                "plot_workers": args.plot_workers,
-                "max_datasets": args.max_datasets
+        json.dump(
+            {
+                "cpu_count": cpu_count(),
+                "total_time_s": round(total_time, 3),
+                "submit_time_s": round(submit_start - start_all, 3),
+                "processing_time_s": round(completion_time - submit_start, 3),
+                "cpu_stats": cpu_stats,
+                "config": {
+                    "slipstick_workers": args.slipstick_workers,
+                    "plot_workers": args.plot_workers,
+                    "max_datasets": args.max_datasets,
+                },
+                "files": metrics,
             },
-            "files": metrics
-        }, fh, indent=2)
+            fh,
+            indent=2,
+        )
 
     if metrics:
         durations = [m["duration_s"] for m in metrics]
         print("\nBenchmark summary:")
-        print(f"  Configuration: {args.slipstick_workers} slipstick workers, {args.plot_workers} plot workers each")
+        print(
+            f"  Configuration: {args.slipstick_workers} slipstick workers, {args.plot_workers} plot workers each"
+        )
         print(f"  Datasets processed: {len(metrics)}/{total}")
         print(f"  Setup time: {(submit_start - start_all):.1f}s")
         print(f"  Processing time: {(completion_time - submit_start):.1f}s")
@@ -297,4 +351,5 @@ def main() -> int:
 
 if __name__ == "__main__":
     import sys
+
     sys.exit(main())

@@ -146,6 +146,7 @@ def main() -> int:
         jobs.append((str(f), str(plot_dir), str(noise_dir), str(spec_dir), str(spec_summary), str(summaries_dir), args.plot_workers))
 
     total = len(jobs)
+    print(f"Built {total} jobs")
     if total == 0:
         print("No new jobs to process. Exiting.")
         return 0
@@ -292,3 +293,8 @@ def main() -> int:
 
     print("All files processed.")
     return 0
+
+
+if __name__ == "__main__":
+    import sys
+    sys.exit(main())

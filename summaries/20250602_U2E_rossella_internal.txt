@@ -1,0 +1,81 @@
+Replicate 1_1
+  samples=3000 | threshold=1.400 cN / 25 mm
+  noise: std=0.06804 cN / 25 mm | bias=0.24504 cN / 25 mm | max_abs=0.16858 cN / 25 mm | n=80 | disp≤4.981 mm | span=0.790 s | peak≈5.00 Hz
+  denoised: low-pass filter fc=7.00 Hz (instrument peak ≈ 8.75 Hz)
+  No spikes above threshold in the selected displacement window.
+
+Replicate 1_2
+  samples=3000 | threshold=1.400 cN / 25 mm
+  noise: std=0.06536 cN / 25 mm | bias=0.12318 cN / 25 mm | max_abs=0.14770 cN / 25 mm | n=80 | disp≤4.981 mm | span=0.790 s | peak≈8.75 Hz
+  denoised: low-pass filter fc=7.00 Hz (instrument peak ≈ 8.75 Hz)
+  No spikes above threshold in the selected displacement window.
+
+Replicate 1_3
+  samples=3000 | threshold=1.400 cN / 25 mm
+  noise: std=0.08857 cN / 25 mm | bias=0.06901 cN / 25 mm | max_abs=0.23131 cN / 25 mm | n=80 | disp≤4.981 mm | span=0.790 s | peak≈8.75 Hz
+  denoised: low-pass filter fc=7.00 Hz (instrument peak ≈ 8.75 Hz)
+  No spikes above threshold in the selected displacement window.
+
+Replicate 1_4
+  samples=3000 | threshold=1.400 cN / 25 mm
+  noise: std=0.07260 cN / 25 mm | bias=0.08648 cN / 25 mm | max_abs=0.17509 cN / 25 mm | n=80 | disp≤4.981 mm | span=0.790 s | peak≈8.75 Hz
+  denoised: low-pass filter fc=7.00 Hz (instrument peak ≈ 8.75 Hz)
+  No spikes above threshold in the selected displacement window.
+
+Replicate 1_5
+  samples=3000 | threshold=1.400 cN / 25 mm
+  noise: std=0.09358 cN / 25 mm | bias=0.35328 cN / 25 mm | max_abs=0.26881 cN / 25 mm | n=80 | disp≤4.981 mm | span=0.790 s | peak≈23.75 Hz
+  denoised: low-pass filter fc=7.00 Hz (instrument peak ≈ 8.75 Hz)
+  No spikes above threshold in the selected displacement window.
+
+Replicate 1_6
+  samples=3000 | threshold=1.400 cN / 25 mm
+  noise: std=0.07959 cN / 25 mm | bias=0.09433 cN / 25 mm | max_abs=0.18683 cN / 25 mm | n=80 | disp≤4.981 mm | span=0.790 s | peak≈8.75 Hz
+  denoised: low-pass filter fc=7.00 Hz (instrument peak ≈ 8.75 Hz)
+  No spikes above threshold in the selected displacement window.
+
+Replicate 1_7
+  samples=3000 | threshold=1.400 cN / 25 mm
+  noise: std=0.06298 cN / 25 mm | bias=0.07670 cN / 25 mm | max_abs=0.17792 cN / 25 mm | n=80 | disp≤4.981 mm | span=0.790 s | peak≈8.75 Hz
+  denoised: low-pass filter fc=7.00 Hz (instrument peak ≈ 8.75 Hz)
+  No spikes above threshold in the selected displacement window.
+
+Replicate 1_8
+  samples=3000 | threshold=1.400 cN / 25 mm
+  noise: std=0.06705 cN / 25 mm | bias=0.09665 cN / 25 mm | max_abs=0.20266 cN / 25 mm | n=80 | disp≤4.981 mm | span=0.790 s | peak≈23.75 Hz
+  denoised: low-pass filter fc=7.00 Hz (instrument peak ≈ 8.75 Hz)
+  time=33.770 s | disp=168.631 mm | residual=1.5031 cN / 25 mm (idx 2372)
+
+Replicate 1_9
+  samples=3000 | threshold=1.400 cN / 25 mm
+  noise: std=0.05265 cN / 25 mm | bias=0.08167 cN / 25 mm | max_abs=0.20135 cN / 25 mm | n=80 | disp≤4.981 mm | span=0.790 s | peak≈23.75 Hz
+  denoised: low-pass filter fc=7.00 Hz (instrument peak ≈ 8.75 Hz)
+  No spikes above threshold in the selected displacement window.
+
+Replicate 1_10
+  samples=3000 | threshold=1.400 cN / 25 mm
+  noise: std=0.08016 cN / 25 mm | bias=0.08996 cN / 25 mm | max_abs=0.20784 cN / 25 mm | n=80 | disp≤4.981 mm | span=0.790 s | peak≈5.00 Hz
+  denoised: low-pass filter fc=7.00 Hz (instrument peak ≈ 8.75 Hz)
+  No spikes above threshold in the selected displacement window.
+
+
+Noise estimates for 20250602_U2E_rossella_internal
+  replicates: | count=10 | median std=0.07032 | mean std=0.07306 | max abs noise=0.26881 cN / 25 mm
+  bias: | median=0.09215 | range=(0.06901, 0.35328) cN / 25 mm
+  total noise samples: | count=800 | max disp used=4.98112 mm
+  instrument peak≈8.75 Hz | applied cutoff≈7.00 Hz
+
+
+Summary for 20250602_U2E_rossella_internal
+  1_1: 0 spikes
+  1_2: 0 spikes
+  1_3: 0 spikes
+  1_4: 0 spikes
+  1_5: 0 spikes
+  1_6: 0 spikes
+  1_7: 0 spikes
+  1_8: 1 spike
+  1_9: 0 spikes
+  1_10: 0 spikes
+  Total: 1 spike
+

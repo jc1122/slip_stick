@@ -1,0 +1,87 @@
+Replicate 1_1
+  samples=3000 | threshold=1.400 cN / 25 mm
+  noise: std=0.09637 cN / 25 mm | bias=0.94069 cN / 25 mm | max_abs=0.27375 cN / 25 mm | n=80 | disp≤4.981 mm | span=0.790 s | peak≈6.25 Hz
+  denoised: low-pass filter fc=6.00 Hz (instrument peak ≈ 7.50 Hz)
+  No spikes above threshold in the selected displacement window.
+
+Replicate 1_2
+  samples=3000 | threshold=1.400 cN / 25 mm
+  noise: std=0.05849 cN / 25 mm | bias=0.19777 cN / 25 mm | max_abs=0.12126 cN / 25 mm | n=80 | disp≤4.981 mm | span=0.790 s | peak≈8.75 Hz
+  denoised: low-pass filter fc=6.00 Hz (instrument peak ≈ 7.50 Hz)
+  time=10.370 s | disp=51.631 mm | residual=2.8866 cN / 25 mm (idx 32)
+
+Replicate 1_3
+  samples=3000 | threshold=1.400 cN / 25 mm
+  noise: std=0.04927 cN / 25 mm | bias=0.57138 cN / 25 mm | max_abs=0.13465 cN / 25 mm | n=80 | disp≤4.981 mm | span=0.790 s | peak≈5.00 Hz
+  denoised: low-pass filter fc=6.00 Hz (instrument peak ≈ 7.50 Hz)
+  No spikes above threshold in the selected displacement window.
+
+Replicate 1_4
+  samples=3000 | threshold=1.400 cN / 25 mm
+  noise: std=0.08304 cN / 25 mm | bias=0.94126 cN / 25 mm | max_abs=0.21929 cN / 25 mm | n=80 | disp≤4.981 mm | span=0.790 s | peak≈8.75 Hz
+  denoised: low-pass filter fc=6.00 Hz (instrument peak ≈ 7.50 Hz)
+  No spikes above threshold in the selected displacement window.
+
+Replicate 1_5
+  samples=3000 | threshold=1.400 cN / 25 mm
+  noise: std=0.05080 cN / 25 mm | bias=0.13878 cN / 25 mm | max_abs=0.13508 cN / 25 mm | n=80 | disp≤4.981 mm | span=0.790 s | peak≈8.75 Hz
+  denoised: low-pass filter fc=6.00 Hz (instrument peak ≈ 7.50 Hz)
+  No spikes above threshold in the selected displacement window.
+
+Replicate 1_6
+  samples=3000 | threshold=1.400 cN / 25 mm
+  noise: std=0.05908 cN / 25 mm | bias=0.44841 cN / 25 mm | max_abs=0.15396 cN / 25 mm | n=80 | disp≤4.981 mm | span=0.790 s | peak≈8.75 Hz
+  denoised: low-pass filter fc=6.00 Hz (instrument peak ≈ 7.50 Hz)
+  No spikes above threshold in the selected displacement window.
+
+Replicate 1_7
+  samples=3000 | threshold=1.400 cN / 25 mm
+  noise: std=0.05785 cN / 25 mm | bias=0.20059 cN / 25 mm | max_abs=0.14449 cN / 25 mm | n=80 | disp≤4.981 mm | span=0.790 s | peak≈3.75 Hz
+  denoised: low-pass filter fc=6.00 Hz (instrument peak ≈ 7.50 Hz)
+  No spikes above threshold in the selected displacement window.
+
+Replicate 1_8
+  samples=3000 | threshold=1.400 cN / 25 mm
+  noise: std=0.07622 cN / 25 mm | bias=0.34924 cN / 25 mm | max_abs=0.16389 cN / 25 mm | n=80 | disp≤4.981 mm | span=0.790 s | peak≈8.75 Hz
+  denoised: low-pass filter fc=6.00 Hz (instrument peak ≈ 7.50 Hz)
+  No spikes above threshold in the selected displacement window.
+
+Replicate 1_9
+  samples=1978 | threshold=1.400 cN / 25 mm
+  noise: std=0.06037 cN / 25 mm | bias=0.24076 cN / 25 mm | max_abs=0.13983 cN / 25 mm | n=80 | disp≤4.981 mm | span=0.790 s | peak≈5.00 Hz
+  denoised: low-pass filter fc=6.00 Hz (instrument peak ≈ 7.50 Hz)
+  time=27.050 s | disp=135.031 mm | residual=-1.5610 cN / 25 mm (idx 1700)
+  time=27.260 s | disp=136.081 mm | residual=-1.8063 cN / 25 mm (idx 1721)
+  time=27.840 s | disp=138.982 mm | residual=-2.4727 cN / 25 mm (idx 1779)
+  time=28.020 s | disp=139.881 mm | residual=-2.4957 cN / 25 mm (idx 1797)
+  time=28.250 s | disp=141.031 mm | residual=-2.6053 cN / 25 mm (idx 1820)
+  time=29.500 s | disp=147.281 mm | residual=9.3312 cN / 25 mm (idx 1945)
+
+Replicate 1_10
+  samples=3000 | threshold=1.400 cN / 25 mm
+  noise: std=0.06095 cN / 25 mm | bias=0.53642 cN / 25 mm | max_abs=0.17790 cN / 25 mm | n=80 | disp≤4.981 mm | span=0.790 s | peak≈6.25 Hz
+  denoised: low-pass filter fc=6.00 Hz (instrument peak ≈ 7.50 Hz)
+  time=30.500 s | disp=152.281 mm | residual=1.7999 cN / 25 mm (idx 2045)
+  time=30.990 s | disp=154.731 mm | residual=3.3914 cN / 25 mm (idx 2094)
+
+
+Noise estimates for 20250430_T1E_dolpap_external
+  replicates: | count=10 | median std=0.05972 | mean std=0.06524 | max abs noise=0.27375 cN / 25 mm
+  bias: | median=0.39882 | range=(0.13878, 0.94126) cN / 25 mm
+  total noise samples: | count=800 | max disp used=4.98137 mm
+  instrument peak≈7.50 Hz | applied cutoff≈6.00 Hz
+
+
+Summary for 20250430_T1E_dolpap_external
+  1_1: 0 spikes
+  1_2: 1 spike
+  1_3: 0 spikes
+  1_4: 0 spikes
+  1_5: 0 spikes
+  1_6: 0 spikes
+  1_7: 0 spikes
+  1_8: 0 spikes
+  1_9: 6 spikes
+  1_10: 2 spikes
+  Total: 9 spikes
+

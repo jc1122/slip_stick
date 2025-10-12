@@ -1,0 +1,173 @@
+Replicate 1_1
+  samples=3000 | threshold=1.400 cN / 25 mm
+  noise: std=0.08307 cN / 25 mm | bias=2.11469 cN / 25 mm | max_abs=0.20108 cN / 25 mm | n=77 | disp≤4.831 mm | span=0.760 s | peak≈9.09 Hz
+  denoised: low-pass filter fc=10.71 Hz (instrument peak ≈ 13.38 Hz)
+  time=13.440 s | disp=66.981 mm | residual=-1.5460 cN / 25 mm (idx 339)
+  time=14.700 s | disp=73.281 mm | residual=2.1123 cN / 25 mm (idx 465)
+  time=23.480 s | disp=117.181 mm | residual=1.5971 cN / 25 mm (idx 1343)
+  time=28.050 s | disp=140.031 mm | residual=1.4499 cN / 25 mm (idx 1800)
+  time=36.480 s | disp=182.181 mm | residual=-1.5305 cN / 25 mm (idx 2643)
+  time=36.830 s | disp=183.931 mm | residual=-1.8616 cN / 25 mm (idx 2678)
+  time=37.270 s | disp=186.131 mm | residual=-1.5789 cN / 25 mm (idx 2722)
+  time=39.140 s | disp=195.481 mm | residual=2.7581 cN / 25 mm (idx 2909)
+  time=39.620 s | disp=197.881 mm | residual=1.6538 cN / 25 mm (idx 2957)
+  time=40.000 s | disp=199.781 mm | residual=5.9030 cN / 25 mm (idx 2995)
+
+Replicate 1_2
+  samples=3000 | threshold=1.400 cN / 25 mm
+  noise: std=0.10251 cN / 25 mm | bias=2.59839 cN / 25 mm | max_abs=0.22303 cN / 25 mm | n=50 | disp≤3.481 mm | span=0.490 s | peak≈8.00 Hz
+  denoised: low-pass filter fc=10.71 Hz (instrument peak ≈ 13.38 Hz)
+  time=19.770 s | disp=98.631 mm | residual=1.4114 cN / 25 mm (idx 972)
+  time=38.430 s | disp=191.931 mm | residual=1.4000 cN / 25 mm (idx 2838)
+  time=39.710 s | disp=198.331 mm | residual=1.7828 cN / 25 mm (idx 2966)
+
+Replicate 1_3
+  samples=3000 | threshold=1.400 cN / 25 mm
+  noise: std=0.03816 cN / 25 mm | bias=3.18685 cN / 25 mm | max_abs=0.08948 cN / 25 mm | n=23 | disp≤2.131 mm | span=0.220 s | peak≈17.39 Hz
+  denoised: low-pass filter fc=10.71 Hz (instrument peak ≈ 13.38 Hz)
+  time=10.250 s | disp=51.031 mm | residual=1.5637 cN / 25 mm (idx 20)
+  time=10.590 s | disp=52.731 mm | residual=4.1995 cN / 25 mm (idx 54)
+  time=11.500 s | disp=57.281 mm | residual=-1.4277 cN / 25 mm (idx 145)
+  time=11.980 s | disp=59.681 mm | residual=-1.4232 cN / 25 mm (idx 193)
+  time=12.960 s | disp=64.581 mm | residual=3.0437 cN / 25 mm (idx 291)
+  time=13.110 s | disp=65.331 mm | residual=-2.2127 cN / 25 mm (idx 306)
+  time=16.840 s | disp=83.981 mm | residual=2.6059 cN / 25 mm (idx 679)
+  time=17.020 s | disp=84.881 mm | residual=2.5856 cN / 25 mm (idx 697)
+  time=17.250 s | disp=86.032 mm | residual=-1.8895 cN / 25 mm (idx 720)
+  time=18.400 s | disp=91.781 mm | residual=1.8451 cN / 25 mm (idx 835)
+  time=18.600 s | disp=92.781 mm | residual=-2.2983 cN / 25 mm (idx 855)
+  time=26.030 s | disp=129.931 mm | residual=1.6657 cN / 25 mm (idx 1598)
+  time=27.580 s | disp=137.681 mm | residual=1.5377 cN / 25 mm (idx 1753)
+
+Replicate 1_4
+  samples=3000 | threshold=1.400 cN / 25 mm
+  noise: std=0.08892 cN / 25 mm | bias=2.24550 cN / 25 mm | max_abs=0.22590 cN / 25 mm | n=60 | disp≤3.981 mm | span=0.590 s | peak≈6.67 Hz
+  denoised: low-pass filter fc=10.71 Hz (instrument peak ≈ 13.38 Hz)
+  time=15.960 s | disp=79.581 mm | residual=2.5350 cN / 25 mm (idx 591)
+  time=18.130 s | disp=90.431 mm | residual=-1.4649 cN / 25 mm (idx 808)
+  time=18.540 s | disp=92.481 mm | residual=-1.7052 cN / 25 mm (idx 849)
+  time=19.050 s | disp=95.031 mm | residual=-1.9862 cN / 25 mm (idx 900)
+  time=20.500 s | disp=102.281 mm | residual=1.4554 cN / 25 mm (idx 1045)
+  time=20.890 s | disp=104.231 mm | residual=1.4747 cN / 25 mm (idx 1084)
+  time=21.700 s | disp=108.281 mm | residual=1.9556 cN / 25 mm (idx 1165)
+  time=21.890 s | disp=109.231 mm | residual=1.8445 cN / 25 mm (idx 1184)
+  time=22.050 s | disp=110.031 mm | residual=2.1402 cN / 25 mm (idx 1200)
+  time=22.210 s | disp=110.831 mm | residual=2.2566 cN / 25 mm (idx 1216)
+  time=25.810 s | disp=128.831 mm | residual=-1.5402 cN / 25 mm (idx 1576)
+  time=30.940 s | disp=154.481 mm | residual=2.9306 cN / 25 mm (idx 2089)
+  time=31.160 s | disp=155.581 mm | residual=-1.4346 cN / 25 mm (idx 2111)
+  time=32.430 s | disp=161.931 mm | residual=1.7606 cN / 25 mm (idx 2238)
+
+Replicate 1_5
+  samples=3000 | threshold=1.400 cN / 25 mm
+  noise: std=0.34336 cN / 25 mm | bias=2.26548 cN / 25 mm | max_abs=0.93255 cN / 25 mm | n=71 | disp≤4.531 mm | span=0.700 s | peak≈5.63 Hz
+  denoised: low-pass filter fc=10.71 Hz (instrument peak ≈ 13.38 Hz)
+  time=29.910 s | disp=149.331 mm | residual=-1.6495 cN / 25 mm (idx 1986)
+  time=30.270 s | disp=151.131 mm | residual=-1.4829 cN / 25 mm (idx 2022)
+  time=30.610 s | disp=152.831 mm | residual=-1.6470 cN / 25 mm (idx 2056)
+  time=30.890 s | disp=154.231 mm | residual=-1.8542 cN / 25 mm (idx 2084)
+  time=30.970 s | disp=154.631 mm | residual=-1.8487 cN / 25 mm (idx 2092)
+  time=31.680 s | disp=158.181 mm | residual=1.4969 cN / 25 mm (idx 2163)
+  time=32.940 s | disp=164.481 mm | residual=5.8945 cN / 25 mm (idx 2289)
+
+Replicate 1_6
+  samples=3000 | threshold=1.400 cN / 25 mm
+  noise: std=0.04198 cN / 25 mm | bias=2.96420 cN / 25 mm | max_abs=0.08754 cN / 25 mm | n=18 | disp≤1.881 mm | span=0.170 s | peak≈33.33 Hz
+  denoised: low-pass filter fc=10.71 Hz (instrument peak ≈ 13.38 Hz)
+  time=10.400 s | disp=51.781 mm | residual=-1.5725 cN / 25 mm (idx 35)
+  time=11.120 s | disp=55.381 mm | residual=1.9659 cN / 25 mm (idx 107)
+  time=11.300 s | disp=56.281 mm | residual=-1.9279 cN / 25 mm (idx 125)
+  time=12.070 s | disp=60.131 mm | residual=1.4188 cN / 25 mm (idx 202)
+  time=12.240 s | disp=60.981 mm | residual=-1.9489 cN / 25 mm (idx 219)
+  time=13.630 s | disp=67.931 mm | residual=-1.4540 cN / 25 mm (idx 358)
+  time=18.200 s | disp=90.781 mm | residual=-1.5266 cN / 25 mm (idx 815)
+  time=21.260 s | disp=106.081 mm | residual=-1.6487 cN / 25 mm (idx 1121)
+  time=21.640 s | disp=107.981 mm | residual=-1.4412 cN / 25 mm (idx 1159)
+  time=21.850 s | disp=109.031 mm | residual=1.4868 cN / 25 mm (idx 1180)
+  time=23.650 s | disp=118.031 mm | residual=2.1470 cN / 25 mm (idx 1360)
+  time=23.810 s | disp=118.831 mm | residual=-1.5791 cN / 25 mm (idx 1376)
+  time=24.060 s | disp=120.081 mm | residual=1.8605 cN / 25 mm (idx 1401)
+  time=24.470 s | disp=122.131 mm | residual=1.7314 cN / 25 mm (idx 1442)
+  time=32.720 s | disp=163.381 mm | residual=1.5315 cN / 25 mm (idx 2267)
+  time=33.940 s | disp=169.481 mm | residual=-1.4597 cN / 25 mm (idx 2389)
+
+Replicate 1_7
+  samples=3000 | threshold=1.400 cN / 25 mm
+  noise: std=0.08245 cN / 25 mm | bias=2.46445 cN / 25 mm | max_abs=0.18083 cN / 25 mm | n=32 | disp≤2.581 mm | span=0.310 s | peak≈9.37 Hz
+  denoised: low-pass filter fc=10.71 Hz (instrument peak ≈ 13.38 Hz)
+  time=10.230 s | disp=50.931 mm | residual=1.6627 cN / 25 mm (idx 18)
+  time=10.400 s | disp=51.781 mm | residual=-1.4246 cN / 25 mm (idx 35)
+  time=10.670 s | disp=53.131 mm | residual=1.5467 cN / 25 mm (idx 62)
+  time=13.040 s | disp=64.981 mm | residual=-1.4534 cN / 25 mm (idx 299)
+  time=13.890 s | disp=69.231 mm | residual=-1.4626 cN / 25 mm (idx 384)
+  time=15.160 s | disp=75.581 mm | residual=-1.5852 cN / 25 mm (idx 511)
+  time=15.400 s | disp=76.781 mm | residual=1.8928 cN / 25 mm (idx 535)
+  time=17.820 s | disp=88.881 mm | residual=1.4129 cN / 25 mm (idx 777)
+  time=19.910 s | disp=99.331 mm | residual=1.6243 cN / 25 mm (idx 986)
+  time=20.300 s | disp=101.281 mm | residual=1.7618 cN / 25 mm (idx 1025)
+  time=20.690 s | disp=103.231 mm | residual=1.6717 cN / 25 mm (idx 1064)
+  time=21.510 s | disp=107.331 mm | residual=1.6559 cN / 25 mm (idx 1146)
+  time=24.910 s | disp=124.331 mm | residual=-1.4089 cN / 25 mm (idx 1486)
+  time=28.340 s | disp=141.481 mm | residual=1.6344 cN / 25 mm (idx 1829)
+
+Replicate 1_8
+  samples=0 | threshold=1.400 cN / 25 mm
+  noise: std=0.00000 cN / 25 mm | bias=4.48415 cN / 25 mm | max_abs=0.00000 cN / 25 mm | n=8 | disp≤1.381 mm | span=0.070 s | peak≈25.00 Hz
+  denoised: low-pass filter fc=10.71 Hz (instrument peak ≈ 13.38 Hz)
+  No spikes above threshold in the selected displacement window.
+
+Replicate 1_9
+  samples=3000 | threshold=1.400 cN / 25 mm
+  noise: std=0.02719 cN / 25 mm | bias=3.82707 cN / 25 mm | max_abs=0.04778 cN / 25 mm | n=17 | disp≤1.831 mm | span=0.160 s | peak≈35.29 Hz
+  denoised: low-pass filter fc=10.71 Hz (instrument peak ≈ 13.38 Hz)
+  time=10.760 s | disp=53.581 mm | residual=-1.5168 cN / 25 mm (idx 71)
+  time=11.180 s | disp=55.681 mm | residual=-1.5387 cN / 25 mm (idx 113)
+  time=13.220 s | disp=65.881 mm | residual=1.4667 cN / 25 mm (idx 317)
+  time=17.620 s | disp=87.881 mm | residual=-1.4239 cN / 25 mm (idx 757)
+  time=21.860 s | disp=109.081 mm | residual=1.6896 cN / 25 mm (idx 1181)
+
+Replicate 1_10
+  samples=0 | threshold=1.400 cN / 25 mm
+  noise: std=0.07600 cN / 25 mm | bias=2.59128 cN / 25 mm | max_abs=0.20765 cN / 25 mm | n=51 | disp≤3.531 mm | span=0.500 s | peak≈23.53 Hz
+  denoised: low-pass filter fc=10.71 Hz (instrument peak ≈ 13.38 Hz)
+  No spikes above threshold in the selected displacement window.
+
+Replicate 1_11
+  samples=3000 | threshold=1.400 cN / 25 mm
+  noise: std=0.28804 cN / 25 mm | bias=2.34224 cN / 25 mm | max_abs=0.60343 cN / 25 mm | n=80 | disp≤4.981 mm | span=0.790 s | peak≈8.75 Hz
+  denoised: low-pass filter fc=10.71 Hz (instrument peak ≈ 13.38 Hz)
+  time=10.540 s | disp=52.481 mm | residual=1.5074 cN / 25 mm (idx 49)
+  time=10.880 s | disp=54.181 mm | residual=1.4947 cN / 25 mm (idx 83)
+  time=13.980 s | disp=69.681 mm | residual=-1.6669 cN / 25 mm (idx 393)
+  time=15.040 s | disp=74.981 mm | residual=-1.4285 cN / 25 mm (idx 499)
+  time=37.570 s | disp=187.631 mm | residual=-1.4823 cN / 25 mm (idx 2752)
+
+Replicate 1_12
+  samples=3000 | threshold=1.400 cN / 25 mm
+  noise: std=0.07830 cN / 25 mm | bias=3.13614 cN / 25 mm | max_abs=0.13518 cN / 25 mm | n=34 | disp≤2.681 mm | span=0.330 s | peak≈23.53 Hz
+  denoised: low-pass filter fc=10.71 Hz (instrument peak ≈ 13.38 Hz)
+  No spikes above threshold in the selected displacement window.
+
+
+Noise estimates for 20250318_C1E_rossella_external
+  replicates: | count=12 | median std=0.08037 | mean std=0.10416 | max abs noise=0.93255 cN / 25 mm
+  bias: | median=2.59483 | range=(2.11469, 4.48415) cN / 25 mm
+  total noise samples: | count=521 | max disp used=4.98125 mm
+  instrument peak≈13.38 Hz | applied cutoff≈10.71 Hz
+
+
+Summary for 20250318_C1E_rossella_external
+  1_1: 10 spikes
+  1_2: 3 spikes
+  1_3: 13 spikes
+  1_4: 14 spikes
+  1_5: 7 spikes
+  1_6: 16 spikes
+  1_7: 14 spikes
+  1_8: 0 spikes
+  1_9: 5 spikes
+  1_10: 0 spikes
+  1_11: 5 spikes
+  1_12: 0 spikes
+  Total: 87 spikes
+

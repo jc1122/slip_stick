@@ -113,14 +113,14 @@ def main() -> int:
     parser.add_argument(
         "--slipstick-workers",
         type=int,
-        default=1,
-        help="Number of concurrent slipstick jobs (default: 1)",
+        default=4,
+        help="Number of concurrent slipstick jobs (default: 4)",
     )
     parser.add_argument(
         "--plot-workers",
         type=int,
-        default=1,
-        help="Number of plot workers per slipstick job (default: 1)",
+        default=4,
+        help="Number of plot workers per slipstick job (default: 4)",
     )
     parser.add_argument(
         "--max-datasets",

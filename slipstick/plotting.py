@@ -267,7 +267,8 @@ def _save_plot(
 ) -> None:
     assert plt is not None  # plotting gated by caller
 
-    spike_indices = [sp.index for sp in result.spikes]
+    positive_spikes = [sp for sp in result.spikes if sp.residual_n > 0]
+    spike_indices = [sp.index for sp in positive_spikes]
     spike_disp = result.disp[spike_indices] if spike_indices else np.array([])
 
     fig, (ax_force, ax_residual) = plt.subplots(2, 1, sharex=True, figsize=(10, 6))
@@ -301,7 +302,6 @@ def _save_plot(
     ax_residual.axhline(
         threshold_display, color="0.3", linestyle="--", linewidth=1.0, label="threshold"
     )
-    ax_residual.axhline(-threshold_display, color="0.3", linestyle="--", linewidth=1.0)
     if spike_indices:
         ax_residual.scatter(
             spike_disp, residual_series[spike_indices], color="#d62728", marker="x"

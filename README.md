@@ -316,7 +316,7 @@ flowchart TD
 
 ## CLI options (common)
 
-Core options:
+### Core options
 
 | Option | Meaning | Default |
 |---|---:|---:|
@@ -325,7 +325,7 @@ Core options:
 | `--disp-max` | Analysis upper displacement (mm) — end of analysis window; prefer a plateau region before the test end or large events. Avoid including the measurement end where dynamics change. | 200.0 |
 | `--threshold` | Detection threshold (report unit) | None (defaults applied) |
 
-Noise / filtering:
+### Noise / filtering
 
 | Option | Meaning | Default |
 |---|---:|---:|
@@ -333,14 +333,14 @@ Noise / filtering:
 | `--noise-disp-max` | End of noise window (mm) | 5.0 |
 | `--instrument-cutoff-factor` | Cutoff scaling factor | 0.8 |
 
-Noise window guidance
+### Noise window guidance
 
 - `--noise-disp-min` and `--noise-disp-max` define the small displacement interval used to sample instrument noise for each replicate. By default these are 1.0–5.0 mm.
 - Purpose: this range is chosen to lie before the specimen engages so the measured signal reflects instrument background noise rather than specimen response. In many tests the pre-test region (1–5 mm) contains only instrument noise because the specimen is still loose or not under load.
 - Caveats: displacements below ~1 mm can include start-up transients, seating effects or fixture contact; displacements above ~5 mm may begin to show the specimen engaging and the first valid signal. If your instrument/test sequence differs, adjust `--noise-disp-min` and `--noise-disp-max` to a quiet region in your traces.
 
 
-Plotting & output:
+### Plotting & output
 
 | Option | Meaning | Default |
 |---|---:|---:|
@@ -417,7 +417,7 @@ If you use this software in your research, please cite:
 
 ```bibtex
 @software{slipstick2025,
-  author = {[Author Names]},
+  author = {Jakub Czakaj},
   title = {Slip-Stick Spike Detection: Automated Analysis of Tensile Test Data},
   year = {2025},
   version = {1.0.0},
@@ -429,7 +429,7 @@ If you use this software in your research, please cite:
 For the associated publication, please cite:
 ```bibtex
 @article{[publication_key],
-  author = {[Author Names]},
+  author = {Jakub Czakaj},
   title = {[Publication Title]},
   journal = {[Journal Name]},
   year = {2025},
@@ -482,15 +482,15 @@ pre-commit install
 
 This project is licensed under the MIT License - see the `LICENSE` file for details.
 
-Copyright (c) 2025 [Author Names]
+Copyright (c) 2025 Jakub Czakaj
 
 ## Acknowledgments
 
-This work was supported by [Funding Source / Institution]. We thank [Collaborators] for valuable discussions and feedback.
+This work was supported by Program Doktorat Wdrożeniowy IV, nr wniosku DWD/6/0325/2022; Almara sp. z o.o. sp.k.; Uniwersytet im. Adama Mickiewicza w Poznaniu. We thank our collaborators for valuable discussions and feedback.
 
 ## Contact
 
 For questions, suggestions, or collaboration inquiries:
 - **GitHub Issues**: https://github.com/jc1122/slip_stick/issues
-- **Email**: [contact email]
-- **Institution**: [Research group / Lab website]
+- **Email**: jakub.czakaj@almara.com.pl
+- **Institution**: Almara sp. z o.o. sp.k.

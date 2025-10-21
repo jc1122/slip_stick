@@ -4,11 +4,9 @@ title: "Slip-Stick Spike Detection: Automated Analysis of Tensile Test Data"
 version: 1.0.0
 date-released: 2025-10-21
 authors:
-  - family-names: "Author"
-    given-names: "Name"
-    orcid: "https://orcid.org/0000-0000-0000-0000"
-    affiliation: "Institution Name"
-  # Add additional authors as needed
+  - family-names: "Czakaj"
+    given-names: "Jakub"
+    affiliation: "Almara sp. z o.o. sp.k."
 abstract: >-
   A Python package for automated detection and analysis of slip-stick phenomena
   in tensile test data from FTM 10 testing machines. The software implements

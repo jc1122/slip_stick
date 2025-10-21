@@ -309,4 +309,3 @@ Summary for 20250512_T1EN_rossella_external
   1_9: 22 spikes
   1_10: 23 spikes
   Total: 241 spikes
-

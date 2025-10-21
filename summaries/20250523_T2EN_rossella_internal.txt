@@ -165,4 +165,3 @@ Summary for 20250523_T2EN_rossella_internal
   1_9: 16 spikes
   1_10: 0 spikes
   Total: 93 spikes
-

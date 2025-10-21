@@ -187,4 +187,3 @@ Summary for 20250514_T1EN_crosil42_internal_dup1
   1_9: 7 spikes
   1_10: 13 spikes
   Total: 119 spikes
-

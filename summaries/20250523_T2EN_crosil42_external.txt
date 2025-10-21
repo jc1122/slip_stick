@@ -139,4 +139,3 @@ Summary for 20250523_T2EN_crosil42_external
   1_9: 5 spikes
   1_10: 3 spikes
   Total: 70 spikes
-

@@ -92,4 +92,3 @@ Summary for 20250505_T1E_dolpap_internal
   1_9: 2 spikes
   1_10: 3 spikes
   Total: 20 spikes
-

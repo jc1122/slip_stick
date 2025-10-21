@@ -441,4 +441,3 @@ Summary for 20250528_U2E_crosil42_external
   1_9: 26 spikes
   1_10: 19 spikes
   Total: 373 spikes
-

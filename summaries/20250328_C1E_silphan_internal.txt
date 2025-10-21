@@ -194,4 +194,3 @@ Summary for 20250328_C1E_silphan_internal
   1_16: 22 spikes
   1_17: 7 spikes
   Total: 79 spikes
-

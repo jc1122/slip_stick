@@ -84,4 +84,3 @@ Summary for 20250430_T1E_dolpap_external
   1_9: 6 spikes
   1_10: 2 spikes
   Total: 9 spikes
-

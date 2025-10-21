@@ -86,4 +86,3 @@ Summary for 20250521_T2EN_dolpap_internal
   1_8: 0 spikes
   1_9: 0 spikes
   Total: 17 spikes
-

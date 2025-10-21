@@ -199,4 +199,3 @@ Summary for 20250319_C1E_silphan_external
   1_19: 0 spikes
   1_20: 0 spikes
   Total: 61 spikes
-

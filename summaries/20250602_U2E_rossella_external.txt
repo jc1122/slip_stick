@@ -491,4 +491,3 @@ Summary for 20250602_U2E_rossella_external
   1_9: 33 spikes
   1_10: 61 spikes
   Total: 423 spikes
-

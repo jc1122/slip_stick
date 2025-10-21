@@ -95,4 +95,3 @@ Summary for 20250519_C1EN_crosil42_internal
   1_9: 0 spikes
   1_10: 2 spikes
   Total: 23 spikes
-

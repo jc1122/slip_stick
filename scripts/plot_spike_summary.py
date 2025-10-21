@@ -34,13 +34,15 @@ def parse_summary_data(summaries_dir: Path) -> pd.DataFrame:
             continue
 
         date, material_type, film_type, side = match.groups()
-        if film_type == "silphan" or material_type == "T2E":
+        if film_type == "silphan":
             continue
 
         try:
             with open(summary_file, "r") as f:
                 content = f.read()
-                spike_counts = [int(c) for c in re.findall(r"  \S+: (\d+) spikes", content)]
+                spike_counts = [
+                    int(c) for c in re.findall(r"  \S+: (\d+) spikes", content)
+                ]
                 if spike_counts:
                     average_spikes = np.mean(spike_counts)
                     data.append(

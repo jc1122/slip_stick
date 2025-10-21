@@ -16,3 +16,4 @@ __pycache__/
 
 # Misc
 *.npz
+spike_summary*.png

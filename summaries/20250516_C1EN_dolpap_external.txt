@@ -89,4 +89,3 @@ Summary for 20250516_C1EN_dolpap_external
   1_9: 0 spikes
   1_10: 3 spikes
   Total: 15 spikes
-

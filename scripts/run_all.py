@@ -35,8 +35,13 @@ def _worker(args_tuple: Tuple[str, str, str, str, str, str, int]) -> Dict[str, A
     out_summary = Path(summaries_dir_s) / f"{stem}.txt"
     spec_summary = Path(spec_summary_s)
 
+    # Use the virtual environment's Python if available
+    workspace = Path(__file__).resolve().parents[1]
+    venv_python = workspace / ".venv" / "bin" / "python"
+    python_exe = str(venv_python) if venv_python.exists() else "python3"
+
     cmd = [
-        "python3",
+        python_exe,
         "-m",
         "slipstick.cli",
         "--input",
@@ -56,7 +61,7 @@ def _worker(args_tuple: Tuple[str, str, str, str, str, str, int]) -> Dict[str, A
     ]
 
     env = os.environ.copy()
-    env.update({"MPLBACKEND": "module://mplcairo.base"})
+    # env.update({"MPLBACKEND": "module://mplcairo.base"})  # mplcairo optional, use default backend
 
     t0 = perf_counter()
     try:

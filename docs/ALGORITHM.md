@@ -1,0 +1,534 @@
+# Algorithm Description
+
+## Overview
+
+The slip-stick spike detection algorithm implements a multi-stage signal processing pipeline designed to identify discontinuous debonding events in tensile adhesion tests. This document provides detailed mathematical formulations and implementation notes.
+
+## Processing Pipeline
+
+### 1. Data Loading and Validation
+
+**Input format:** FTM 10 CSV files with:
+- 3-row header
+- Comma decimal separators
+- Column triples: (time, force, displacement) × N replicates
+- Encoding: CP1250
+
+**Validation checks:**
+- Monotonically increasing time series
+- Non-negative displacement values
+- Consistent sampling rate within replicates
+- Minimum sample count (>100 samples recommended)
+
+### 2. Force Normalization
+
+**Purpose:** Scale forces from collection width to reporting width for consistent units.
+
+**Formula:**
+```
+f_report = f_raw × (w_report / w_collection)
+```
+
+**Default values:**
+- `w_collection = 90 mm` (specimen width during test)
+- `w_report = 25 mm` (standard reporting width)
+- Scaling factor: 25/90 ≈ 0.2778
+
+**Implementation:**
+```python
+force_scaled = force_n * (report_width_mm / collection_width_mm)
+```
+
+**Physical interpretation:** Normalizes force per unit width, allowing comparison across different specimen geometries.
+
+### 3. Instrumental Noise Characterization
+
+**Purpose:** Estimate background noise characteristics from pre-test baseline.
+
+**Noise window selection:**
+- Default range: 1–5 mm displacement
+- Rationale: Specimen not engaged, measures instrument-only noise
+- Avoid <1 mm (start-up transients) and >5 mm (specimen engagement)
+
+**Processing steps:**
+
+1. **Sample selection:**
+   ```python
+   mask = (disp_mm >= noise_disp_min) & (disp_mm <= noise_disp_max)
+   noise_samples = force_n[mask]
+   ```
+
+2. **Optional engagement detection:**
+   - If `noise_force_onset` provided, truncate at first sample exceeding threshold
+   - Prevents contamination from early specimen contact
+
+3. **Baseline fitting:**
+   - Long-window Savitzky-Golay filter (polynomial order 3)
+   - Window length: 50% of noise sample duration (minimum 2 s)
+   - Removes slow drift and DC offset
+
+4. **Residual calculation:**
+   ```python
+   residual = noise_samples - baseline
+   ```
+
+5. **Statistics computation:**
+   - Standard deviation: `σ = std(residual)`
+   - DC offset: `μ = mean(residual)`
+   - Maximum absolute: `max_abs = max(|residual|)`
+
+6. **Spectral analysis:**
+   - Compute periodogram: `P(f) = |FFT(residual - mean(residual))|²`
+   - Identify peak frequency: `f_peak = argmax(P(f))` for f > 0
+   - Physical meaning: Dominant instrument vibration frequency
+
+**Output:** `NoiseEstimate` dataclass containing:
+```python
+@dataclass
+class NoiseEstimate:
+    std_n: float              # Noise standard deviation
+    dc_offset_n: float        # DC bias
+    max_abs_n: float          # Maximum absolute residual
+    sample_count: int         # Number of samples in noise window
+    disp_max_mm: float        # Actual max displacement sampled
+    time_span_s: float        # Duration of noise window
+    sample_rate_hz: float     # Estimated sampling rate
+    noise_peak_hz: float      # Dominant noise frequency
+```
+
+### 4. Dataset-Level Filter Design
+
+**Purpose:** Design a common low-pass filter for all replicates based on instrument characteristics.
+
+**Steps:**
+
+1. **Collect replicate-level peaks:**
+   ```python
+   peak_frequencies = [est.noise_peak_hz for est in noise_estimates if est.noise_peak_hz]
+   ```
+
+2. **Compute central tendency:**
+   ```python
+   common_peak_hz = np.median(peak_frequencies)
+   ```
+
+3. **Derive cutoff frequency:**
+   ```python
+   cutoff_hz = common_peak_hz * instrument_cutoff_factor
+   ```
+   - Default `instrument_cutoff_factor = 0.8`
+   - Rationale: Conservative cutoff below instrument peak preserves slip-stick band
+
+4. **Safety constraints:**
+   ```python
+   nyquist = sample_rate_hz / 2
+   cutoff_hz = min(cutoff_hz, nyquist * 0.95)  # Stay below Nyquist
+   ```
+
+**Result:** Single cutoff frequency applied to all replicates in dataset.
+
+### 5. Zero-Phase Butterworth Filtering
+
+**Purpose:** Remove high-frequency instrument noise while preserving slip-stick features.
+
+**Filter specification:**
+- Type: Butterworth low-pass
+- Order: 4
+- Cutoff: Derived from instrument peak frequency
+- Implementation: `scipy.signal.butter` + `scipy.signal.filtfilt`
+
+**Why zero-phase?**
+- Forward-backward filtering (`filtfilt`) eliminates phase shift
+- Preserves temporal alignment of slip-stick events
+- Critical for accurate time/displacement reporting
+
+**Algorithm:**
+
+1. **Sampling rate estimation:**
+   ```python
+   dt = np.diff(time_s)
+   fs = 1.0 / np.median(dt[dt > 0])
+   ```
+
+2. **Normalized cutoff:**
+   ```python
+   normalized_cutoff = cutoff_hz / (fs / 2)
+   normalized_cutoff = min(normalized_cutoff, 0.95)
+   ```
+
+3. **Filter design:**
+   ```python
+   b, a = butter(N=4, Wn=normalized_cutoff, btype='low')
+   ```
+
+4. **Zero-phase application:**
+   ```python
+   filtered_force = filtfilt(b, a, force_n, method='gust')
+   ```
+
+5. **Padding check:**
+   - `filtfilt` requires `3 × filter_order` samples
+   - Skip filtering if insufficient samples
+
+**Physical interpretation:**
+- Removes narrowband electrical/mechanical vibrations >cutoff
+- Preserves low-frequency slip-stick oscillations <cutoff
+- Typical slip-stick: 0.1–5 Hz; typical instrument noise: 5–30 Hz
+
+### 6. Analysis Window Selection
+
+**Purpose:** Restrict analysis to stable test region.
+
+**Default window:** 50–200 mm displacement
+
+**Selection criteria:**
+- `disp_min`: Start of plateau region (excludes start-up transients)
+- `disp_max`: End before test termination or failure
+
+**Implementation:**
+```python
+mask = (disp_mm >= disp_min) & (disp_mm <= disp_max)
+cropped_time = time_s[mask]
+cropped_disp = disp_mm[mask]
+cropped_force = force_n[mask]
+```
+
+**Validation:**
+- Require minimum sample count: `n_samples > polyorder + 1`
+- Typically need >100 samples for stable baseline
+
+### 7. Savitzky-Golay Baseline Fitting
+
+**Purpose:** Estimate slowly-varying trend to reveal short-lived spikes.
+
+**Window length selection:**
+
+1. **Automatic (default):**
+   ```python
+   duration_s = cropped_time[-1] - cropped_time[0]
+   window_s = max(0.5 * duration_s, 4.0)  # 50% of duration, min 4 s
+   ```
+
+2. **Manual override:**
+   - User can specify `--window-seconds`
+
+3. **Convert to samples:**
+   ```python
+   window_length = int(round(window_s * sample_rate_hz))
+   window_length = window_length + 1 if window_length % 2 == 0 else window_length
+   ```
+
+4. **Safety constraints:**
+   ```python
+   min_window = polyorder + 1  # Minimum for fitting
+   max_window = len(cropped_force)  # Can't exceed data length
+   window_length = max(min_window, min(window_length, max_window))
+   if window_length % 2 == 0:
+       window_length -= 1  # Must be odd
+   ```
+
+**Filter application:**
+```python
+baseline = savgol_filter(
+    cropped_force,
+    window_length=window_length,
+    polyorder=3,
+    mode='interp'  # Extrapolate at edges
+)
+```
+
+**Residual calculation:**
+```python
+residual = cropped_force - baseline
+```
+
+**Physical interpretation:**
+- Long window (tens of seconds) averages out short spikes
+- Polynomial order 3 captures gentle curvature
+- Residual contains high-frequency events (slip-stick spikes)
+
+### 8. Spike Detection
+
+**Purpose:** Identify residual excursions exceeding detection threshold.
+
+**Algorithm:** Peak detection on absolute residual
+
+```python
+from scipy.signal import find_peaks
+
+peak_indices, _ = find_peaks(
+    np.abs(residual),
+    height=threshold
+)
+```
+
+**Threshold selection:**
+- Default: 1.4 cN/25 mm (0.0504 N at 90 mm collection width)
+- Rationale: ~10× typical noise floor (0.05–0.15 cN/25 mm)
+- Adjustable via `--threshold` CLI parameter
+
+**Peak properties:**
+```python
+for idx in peak_indices:
+    spike = Spike(
+        index=idx,
+        time_s=cropped_time[idx],
+        disp_mm=cropped_disp[idx],
+        residual_n=residual[idx]  # Can be positive or negative
+    )
+```
+
+**Physical interpretation:**
+- **Positive residual spikes:** Stick events (increased adhesion)
+- **Negative residual spikes:** Slip events (sudden release)
+- **Spike magnitude:** Energy dissipated per event
+- **Inter-spike interval:** Period of stick-slip cycle
+
+### 9. Residual Spectrum Analysis
+
+**Purpose:** Characterize frequency content of slip-stick behavior.
+
+**Periodogram computation:**
+
+1. **Demean residual:**
+   ```python
+   residual_centered = residual - np.mean(residual)
+   ```
+
+2. **Compute periodogram:**
+   ```python
+   freqs, power = periodogram(
+       residual_centered,
+       fs=sample_rate_hz,
+       scaling='density'
+   )
+   ```
+
+3. **Identify peak (excluding DC):**
+   ```python
+   peak_idx = np.argmax(power[freqs > 0])
+   peak_freq = freqs[freqs > 0][peak_idx]
+   ```
+
+**Physical interpretation:**
+- Peak frequency: Dominant slip-stick cycle rate
+- Typical range: 0.1–2 Hz for polymer films
+- Broad peaks: Irregular slip-stick
+- Sharp peaks: Periodic slip-stick
+
+## Mathematical Foundations
+
+### Savitzky-Golay Filter
+
+**Least-squares polynomial fitting:**
+
+For window of 2m+1 points centered at n:
+```
+y_smooth[n] = Σ(i=-m to m) c_i × y[n+i]
+```
+
+Coefficients `c_i` determined by least-squares fit of polynomial:
+```
+p(x) = a_0 + a_1×x + a_2×x² + ... + a_k×x^k
+```
+
+**Properties:**
+- Preserves high-order moments (area, slope, curvature)
+- Smooths noise while maintaining shape
+- Polynomial order k << window length for smoothing
+
+### Butterworth Filter
+
+**Transfer function:**
+```
+|H(ω)|² = 1 / (1 + (ω/ω_c)^(2n))
+```
+
+Where:
+- ω = frequency
+- ω_c = cutoff frequency
+- n = filter order
+
+**Properties:**
+- Maximally flat passband (no ripples)
+- Monotonic rolloff in stopband
+- Order n=4 gives ~80 dB/decade attenuation
+
+**Zero-phase implementation:**
+```
+y_filtered = filter_forward(filter_backward(y))
+```
+- Phase shift: 0° (no temporal distortion)
+- Amplitude response: squared (steeper rolloff)
+
+### Peak Detection
+
+**Local maximum criteria:**
+```
+y[i] is a peak if:
+  y[i] > y[i-1] AND y[i] > y[i+1] AND y[i] ≥ threshold
+```
+
+**Advantages:**
+- Simple and robust
+- No assumptions about peak shape
+- Handles varying peak widths
+
+## Parameter Selection Guidelines
+
+### Noise Window (`--noise-disp-min`, `--noise-disp-max`)
+
+**Default:** 1–5 mm
+
+**Adjustment criteria:**
+- **Reduce lower bound** if start-up transients extend beyond 1 mm
+- **Increase upper bound** if specimen engages earlier than 5 mm
+- **Verify:** Noise plot should show flat, low-amplitude trace
+
+### Analysis Window (`--disp-min`, `--disp-max`)
+
+**Default:** 50–200 mm
+
+**Adjustment criteria:**
+- **Increase lower bound** if transients extend beyond 50 mm
+- **Decrease upper bound** if test ends before 200 mm
+- **Verify:** Window should contain stable plateau region
+
+### Detection Threshold (`--threshold`)
+
+**Default:** 1.4 cN/25 mm
+
+**Adjustment criteria:**
+- **Decrease** to detect smaller spikes (may increase false positives)
+- **Increase** to focus on larger events (may miss subtle slip-stick)
+- **Rule of thumb:** 5–10× noise standard deviation
+
+### Filter Cutoff (`--instrument-cutoff-factor`)
+
+**Default:** 0.8
+
+**Adjustment criteria:**
+- **Decrease** (<0.8) for aggressive filtering (use if high instrument noise)
+- **Increase** (>0.8) for mild filtering (preserve more high-frequency content)
+- **Verify:** Filtered force should preserve slip-stick events, remove vibrations
+
+## Validation Checks
+
+### Input Validation
+- ✓ Time series monotonically increasing
+- ✓ No negative displacements
+- ✓ Sufficient samples in noise window (>10)
+- ✓ Sufficient samples in analysis window (>polyorder+1)
+
+### Processing Validation
+- ✓ Sampling rate estimation reasonable (50–200 Hz typical)
+- ✓ Filter cutoff below Nyquist frequency
+- ✓ Baseline follows slow trends, not spikes
+- ✓ Residual centered near zero (mean ≈ 0)
+
+### Output Validation
+- ✓ Detected spikes exceed threshold
+- ✓ Spike times within analysis window
+- ✓ Noise statistics reasonable (std < 1 cN/25 mm typical)
+
+## Performance Characteristics
+
+### Computational Complexity
+
+- **Data loading:** O(n) where n = file size
+- **Noise estimation:** O(m) where m = noise window samples
+- **Filtering:** O(n log n) due to FFT in `filtfilt`
+- **Baseline fitting:** O(n) for Savitzky-Golay
+- **Spike detection:** O(n) for peak finding
+- **Overall:** O(n log n) per replicate
+
+### Memory Usage
+
+- **Storage:** ~3 arrays per replicate (time, force, displacement)
+- **Peak memory:** During filtering (temporary buffers)
+- **Typical:** <10 MB per dataset with 10 replicates
+
+### Parallel Scaling
+
+- **Plot generation:** Near-linear speedup with 4 workers
+- **Batch processing:** Linear speedup up to number of datasets
+- **I/O bound:** For small files, disk I/O may limit speedup
+
+## References
+
+### Signal Processing Methods
+
+1. **Savitzky-Golay filtering:**
+   - Savitzky, A., & Golay, M. J. E. (1964). "Smoothing and Differentiation of Data by Simplified Least Squares Procedures." *Analytical Chemistry*, 36(8), 1627-1639.
+
+2. **Butterworth filters:**
+   - Butterworth, S. (1930). "On the Theory of Filter Amplifiers." *Experimental Wireless and the Wireless Engineer*, 7, 536-541.
+
+3. **Peak detection algorithms:**
+   - Virtanen, P., et al. (2020). "SciPy 1.0: Fundamental Algorithms for Scientific Computing in Python." *Nature Methods*, 17, 261-272.
+
+### Application Domain
+
+4. **Slip-stick friction:**
+   - Schallamach, A. (1971). "How does rubber slide?" *Wear*, 17(4), 301-312.
+   - Persson, B. N. J. (2000). *Sliding Friction: Physical Principles and Applications*. Springer.
+
+5. **Adhesion testing:**
+   - ASTM D6862-11: Standard Test Method for 90 Degree Peel Resistance of Adhesives.
+
+## Appendix: Code Examples
+
+### Minimal spike detection example
+
+```python
+from slipstick.io import load_replicates
+from slipstick.core import estimate_instrumental_noise, _analyse_replicate
+from slipstick.models import CliConfig
+
+# Load data
+replicates = load_replicates("data.csv")
+
+# Configure analysis
+config = CliConfig(
+    collection_width_mm=90.0,
+    report_width_mm=25.0,
+    force_scale=25.0/90.0,
+    disp_min=50.0,
+    disp_max=200.0,
+    threshold_n=0.0504,  # 1.4 cN/25 mm
+    # ... other parameters
+)
+
+# Analyze first replicate
+result = _analyse_replicate(
+    replicate=replicates[0],
+    config=config,
+    sample_rate_hz=100.0
+)
+
+# Access results
+print(f"Detected {len(result.spikes)} spikes")
+for spike in result.spikes:
+    print(f"  t={spike.time_s:.2f} s, d={spike.disp_mm:.1f} mm, F={spike.residual_n:.3f} N")
+```
+
+### Custom threshold example
+
+```python
+import numpy as np
+
+# Estimate noise
+noise_est = estimate_instrumental_noise(
+    replicate=replicate,
+    noise_disp_min=1.0,
+    noise_disp_max=5.0
+)
+
+# Set threshold as 10× noise floor
+threshold = 10 * noise_est.std_n
+print(f"Adaptive threshold: {threshold:.4f} N")
+
+# Use in analysis
+config.threshold_n = threshold
+result = _analyse_replicate(replicate, config, sample_rate_hz)
+```

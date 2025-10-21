@@ -109,4 +109,3 @@ Summary for 20250331_C1E_crosil42_external
   1_11: 0 spikes
   1_12: 3 spikes
   Total: 24 spikes
-

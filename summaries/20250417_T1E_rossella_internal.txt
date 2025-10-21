@@ -188,4 +188,3 @@ Summary for 20250417_T1E_rossella_internal
   1_9: 13 spikes
   1_10: 2 spikes
   Total: 117 spikes
-

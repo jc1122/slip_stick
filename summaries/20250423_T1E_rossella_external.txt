@@ -79,4 +79,3 @@ Summary for 20250423_T1E_rossella_external
   1_9: 0 spikes
   1_10: 0 spikes
   Total: 2 spikes
-

@@ -1,0 +1,112 @@
+Replicate 1_1
+  samples=3000 | threshold=1.400 cN / 25 mm
+  noise: std=0.06217 cN / 25 mm | bias=0.20436 cN / 25 mm | max_abs=0.13794 cN / 25 mm | n=80 | disp≤4.981 mm | span=0.790 s | peak≈22.50 Hz
+  denoised: low-pass filter fc=18.00 Hz (instrument peak ≈ 22.50 Hz)
+  No spikes above threshold in the selected displacement window.
+
+Replicate 1_2
+  samples=3000 | threshold=1.400 cN / 25 mm
+  noise: std=0.09131 cN / 25 mm | bias=0.09945 cN / 25 mm | max_abs=0.19075 cN / 25 mm | n=80 | disp≤4.981 mm | span=0.790 s | peak≈5.00 Hz
+  denoised: low-pass filter fc=18.00 Hz (instrument peak ≈ 22.50 Hz)
+  time=34.820 s | disp=173.881 mm | residual=2.2581 cN / 25 mm (idx 2477)
+
+Replicate 1_3
+  samples=3000 | threshold=1.400 cN / 25 mm
+  noise: std=0.08065 cN / 25 mm | bias=0.09434 cN / 25 mm | max_abs=0.23071 cN / 25 mm | n=80 | disp≤4.981 mm | span=0.790 s | peak≈22.50 Hz
+  denoised: low-pass filter fc=18.00 Hz (instrument peak ≈ 22.50 Hz)
+  time=12.390 s | disp=61.731 mm | residual=1.8746 cN / 25 mm (idx 234)
+  time=19.770 s | disp=98.631 mm | residual=25.4754 cN / 25 mm (idx 972)
+  time=28.720 s | disp=143.381 mm | residual=2.7345 cN / 25 mm (idx 1867)
+  time=30.480 s | disp=152.181 mm | residual=1.8290 cN / 25 mm (idx 2043)
+  time=35.340 s | disp=176.481 mm | residual=1.9277 cN / 25 mm (idx 2529)
+  time=35.820 s | disp=178.881 mm | residual=1.5056 cN / 25 mm (idx 2577)
+
+Replicate 1_4
+  samples=3000 | threshold=1.400 cN / 25 mm
+  noise: std=0.06815 cN / 25 mm | bias=0.55279 cN / 25 mm | max_abs=0.17252 cN / 25 mm | n=80 | disp≤4.981 mm | span=0.790 s | peak≈22.50 Hz
+  denoised: low-pass filter fc=18.00 Hz (instrument peak ≈ 22.50 Hz)
+  time=16.060 s | disp=80.081 mm | residual=6.5046 cN / 25 mm (idx 601)
+  time=18.140 s | disp=90.481 mm | residual=4.4320 cN / 25 mm (idx 809)
+  time=18.730 s | disp=93.431 mm | residual=1.7519 cN / 25 mm (idx 868)
+  time=20.020 s | disp=99.881 mm | residual=2.9773 cN / 25 mm (idx 997)
+  time=22.340 s | disp=111.481 mm | residual=3.4976 cN / 25 mm (idx 1229)
+  time=30.360 s | disp=151.581 mm | residual=3.6814 cN / 25 mm (idx 2031)
+  time=30.780 s | disp=153.681 mm | residual=1.5764 cN / 25 mm (idx 2073)
+
+Replicate 1_5
+  samples=3000 | threshold=1.400 cN / 25 mm
+  noise: std=0.07122 cN / 25 mm | bias=0.39913 cN / 25 mm | max_abs=0.20133 cN / 25 mm | n=80 | disp≤4.981 mm | span=0.790 s | peak≈22.50 Hz
+  denoised: low-pass filter fc=18.00 Hz (instrument peak ≈ 22.50 Hz)
+  time=11.900 s | disp=59.281 mm | residual=1.6780 cN / 25 mm (idx 185)
+  time=14.540 s | disp=72.481 mm | residual=1.6330 cN / 25 mm (idx 449)
+  time=18.590 s | disp=92.731 mm | residual=1.6615 cN / 25 mm (idx 854)
+  time=18.970 s | disp=94.631 mm | residual=9.0885 cN / 25 mm (idx 892)
+  time=19.950 s | disp=99.531 mm | residual=2.0438 cN / 25 mm (idx 990)
+  time=20.320 s | disp=101.381 mm | residual=1.4192 cN / 25 mm (idx 1027)
+  time=21.100 s | disp=105.281 mm | residual=4.2001 cN / 25 mm (idx 1105)
+  time=21.990 s | disp=109.731 mm | residual=1.5875 cN / 25 mm (idx 1194)
+  time=22.790 s | disp=113.731 mm | residual=2.2305 cN / 25 mm (idx 1274)
+  time=23.160 s | disp=115.581 mm | residual=1.7672 cN / 25 mm (idx 1311)
+  time=25.140 s | disp=125.481 mm | residual=2.2565 cN / 25 mm (idx 1509)
+  time=33.130 s | disp=165.431 mm | residual=2.3543 cN / 25 mm (idx 2308)
+
+Replicate 1_6
+  samples=3000 | threshold=1.400 cN / 25 mm
+  noise: std=0.05363 cN / 25 mm | bias=0.14309 cN / 25 mm | max_abs=0.13473 cN / 25 mm | n=80 | disp≤4.981 mm | span=0.790 s | peak≈6.25 Hz
+  denoised: low-pass filter fc=18.00 Hz (instrument peak ≈ 22.50 Hz)
+  No spikes above threshold in the selected displacement window.
+
+Replicate 1_7
+  samples=3000 | threshold=1.400 cN / 25 mm
+  noise: std=0.05400 cN / 25 mm | bias=0.31945 cN / 25 mm | max_abs=0.12668 cN / 25 mm | n=80 | disp≤4.981 mm | span=0.790 s | peak≈5.00 Hz
+  denoised: low-pass filter fc=18.00 Hz (instrument peak ≈ 22.50 Hz)
+  No spikes above threshold in the selected displacement window.
+
+Replicate 1_8
+  samples=3000 | threshold=1.400 cN / 25 mm
+  noise: std=0.05957 cN / 25 mm | bias=0.23427 cN / 25 mm | max_abs=0.17051 cN / 25 mm | n=80 | disp≤4.981 mm | span=0.790 s | peak≈22.50 Hz
+  denoised: low-pass filter fc=18.00 Hz (instrument peak ≈ 22.50 Hz)
+  time=11.780 s | disp=58.681 mm | residual=2.3770 cN / 25 mm (idx 173)
+  time=14.260 s | disp=71.081 mm | residual=2.7105 cN / 25 mm (idx 421)
+  time=16.200 s | disp=80.781 mm | residual=3.2508 cN / 25 mm (idx 615)
+  time=17.230 s | disp=85.931 mm | residual=1.7422 cN / 25 mm (idx 718)
+  time=17.610 s | disp=87.831 mm | residual=1.4036 cN / 25 mm (idx 756)
+  time=18.250 s | disp=91.031 mm | residual=2.4722 cN / 25 mm (idx 820)
+  time=18.560 s | disp=92.581 mm | residual=1.4378 cN / 25 mm (idx 851)
+  time=19.090 s | disp=95.231 mm | residual=1.6173 cN / 25 mm (idx 904)
+  time=19.590 s | disp=97.731 mm | residual=2.6707 cN / 25 mm (idx 954)
+  time=22.400 s | disp=111.781 mm | residual=1.8260 cN / 25 mm (idx 1235)
+  time=30.470 s | disp=152.131 mm | residual=2.6538 cN / 25 mm (idx 2042)
+
+Replicate 1_9
+  samples=3000 | threshold=1.400 cN / 25 mm
+  noise: std=0.06068 cN / 25 mm | bias=0.23137 cN / 25 mm | max_abs=0.13736 cN / 25 mm | n=80 | disp≤4.981 mm | span=0.790 s | peak≈22.50 Hz
+  denoised: low-pass filter fc=18.00 Hz (instrument peak ≈ 22.50 Hz)
+  No spikes above threshold in the selected displacement window.
+
+Replicate 1_10
+  samples=3000 | threshold=1.400 cN / 25 mm
+  noise: std=0.08594 cN / 25 mm | bias=0.27852 cN / 25 mm | max_abs=0.20574 cN / 25 mm | n=80 | disp≤4.981 mm | span=0.790 s | peak≈8.75 Hz
+  denoised: low-pass filter fc=18.00 Hz (instrument peak ≈ 22.50 Hz)
+  No spikes above threshold in the selected displacement window.
+
+
+Noise estimates for 20250507_T2E_dolpap_internal
+  replicates: | count=10 | median std=0.06516 | mean std=0.06873 | max abs noise=0.23071 cN / 25 mm
+  bias: | median=0.23282 | range=(0.09434, 0.55279) cN / 25 mm
+  total noise samples: | count=800 | max disp used=4.98125 mm
+  instrument peak≈22.50 Hz | applied cutoff≈18.00 Hz
+
+
+Summary for 20250507_T2E_dolpap_internal
+  1_1: 0 spikes
+  1_2: 1 spike
+  1_3: 6 spikes
+  1_4: 7 spikes
+  1_5: 12 spikes
+  1_6: 0 spikes
+  1_7: 0 spikes
+  1_8: 11 spikes
+  1_9: 0 spikes
+  1_10: 0 spikes
+  Total: 37 spikes

@@ -40,7 +40,7 @@ The data processing pipeline is as follows:
 -   **Running the Tool**:
     ```bash
     # Single dataset
-    python -m slipstick.cli --input datasets/20250317_C1E_rossella_internal.csv
+    python -m slipstick.cli --input datasets/20250318_C1E_rossella_internal.csv
 
     # With plots
     python -m slipstick.cli --input datasets/file.csv --plot-dir plots/ --plot-workers 4

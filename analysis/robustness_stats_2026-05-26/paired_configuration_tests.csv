@@ -1,7 +1,0 @@
-metric,effect,test,blocks,statistic,p,columns,median_outer_minus_inner,mean_outer_minus_inner
-mean_release_cN_25mm_mean,liner paired within sealant-side blocks,Friedman,14,19.0,7.485182988770057e-05,Crosil 42;Dolpap;Rossella,,
-mean_release_cN_25mm_mean,sealant paired within liner-side blocks,Friedman,6,23.928571428571416,0.0005382948655204767,C1E;C1EN;T1E;T1EN;T2E;T2EN;U2E,,
-mean_release_cN_25mm_mean,side paired within sealant-liner blocks,Wilcoxon signed-rank,21,59.0,0.08592386002788616,inner;outer,0.40856937877530797,11.862359245193588
-peaks_1.4cN_mean,liner paired within sealant-side blocks,Friedman,14,3.857142857142861,0.14535570123384634,Crosil 42;Dolpap;Rossella,,
-peaks_1.4cN_mean,sealant paired within liner-side blocks,Friedman,6,4.598802395209565,0.5961976253284786,C1E;C1EN;T1E;T1EN;T2E;T2EN;U2E,,
-peaks_1.4cN_mean,side paired within sealant-liner blocks,Wilcoxon signed-rank,21,99.5,0.8373005793912056,inner;outer,0.09999999999999998,2.9384078884078884

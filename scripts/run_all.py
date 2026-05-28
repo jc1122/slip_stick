@@ -6,17 +6,35 @@ and writes textual summaries to summaries/<dataset>.txt. Also creates a per-data
 spectra summary image under plots/spectra.
 """
 
-from pathlib import Path
-from subprocess import run
-from time import perf_counter
+import argparse
+import csv
 import json
 import math
 import os
-import argparse
-from multiprocessing import cpu_count
+import sys
 from concurrent.futures import ProcessPoolExecutor, as_completed
-import psutil
-from typing import Tuple, Dict, Any
+from multiprocessing import cpu_count
+from pathlib import Path
+from subprocess import run
+from time import perf_counter
+from typing import Any, Dict, Tuple
+
+try:
+    import psutil
+except ModuleNotFoundError:
+    psutil = None
+
+
+def publication_csvs(workspace: Path) -> list[Path]:
+    """Return publication datasets in manifest order."""
+    dataset_dir = workspace / "datasets"
+    manifest_path = workspace / "publication" / "dataset_manifest.csv"
+    if not manifest_path.exists():
+        return sorted(dataset_dir.glob("*.csv"))
+
+    with manifest_path.open("r", newline="", encoding="utf-8") as handle:
+        reader = csv.DictReader(handle)
+        return [dataset_dir / row["dataset_file"] for row in reader]
 
 
 def _worker(args_tuple: Tuple[str, str, str, str, str, str, int]) -> Dict[str, Any]:
@@ -38,7 +56,7 @@ def _worker(args_tuple: Tuple[str, str, str, str, str, str, int]) -> Dict[str, A
     # Use the virtual environment's Python if available
     workspace = Path(__file__).resolve().parents[1]
     venv_python = workspace / ".venv" / "bin" / "python"
-    python_exe = str(venv_python) if venv_python.exists() else "python3"
+    python_exe = str(venv_python) if venv_python.exists() else sys.executable
 
     cmd = [
         python_exe,
@@ -68,7 +86,7 @@ def _worker(args_tuple: Tuple[str, str, str, str, str, str, int]) -> Dict[str, A
         res = run(cmd, check=False, capture_output=True, text=True, env=env)
         t1 = perf_counter()
         # write stdout to summary file
-        out_summary.write_text(res.stdout or "")
+        out_summary.write_text((res.stdout or "").rstrip() + "\n", encoding="utf-8")
         if res.stderr:
             # also write stderr to .err file
             err_path = Path(summaries_dir_s) / f"{stem}.err"
@@ -140,7 +158,6 @@ def main() -> int:
     )
 
     workspace = Path(__file__).resolve().parents[1]
-    dataset_dir = workspace / "datasets"
     plot_dir = workspace / "plots" / "analysis"
     noise_dir = workspace / "plots" / "noise"
     spec_dir = workspace / "plots" / "spectra"
@@ -149,10 +166,16 @@ def main() -> int:
     for d in (plot_dir, noise_dir, spec_dir, summaries_dir):
         d.mkdir(parents=True, exist_ok=True)
 
-    csvs = sorted(dataset_dir.glob("*.csv"))
-    print(f"Found {len(csvs)} CSV files in {dataset_dir}")
+    csvs = publication_csvs(workspace)
+    print(f"Found {len(csvs)} publication CSV files from the manifest")
     if not csvs:
-        print("No CSV files found in datasets/")
+        print("No CSV files found in the publication manifest or datasets/")
+        return 1
+    missing = [path.name for path in csvs if not path.exists()]
+    if missing:
+        print("Missing manifest datasets:")
+        for name in missing:
+            print(f"  - {name}")
         return 1
 
     # Build job list with atomic lock creation to avoid duplicates
@@ -219,8 +242,10 @@ def main() -> int:
 
     import threading
 
-    monitor_thread = threading.Thread(target=monitor_cpu, daemon=True)
-    monitor_thread.start()
+    monitor_thread = None
+    if psutil is not None:
+        monitor_thread = threading.Thread(target=monitor_cpu, daemon=True)
+        monitor_thread.start()
 
     # Submit jobs to executor
     futures: dict[Any, str] = {}
@@ -290,7 +315,8 @@ def main() -> int:
 
     # Stop CPU monitoring
     monitoring = False
-    monitor_thread.join(timeout=2)
+    if monitor_thread is not None:
+        monitor_thread.join(timeout=2)
 
     total_time = perf_counter() - start_all
     completion_time = perf_counter()

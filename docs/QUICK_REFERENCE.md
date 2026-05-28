@@ -300,11 +300,11 @@ python -c "import matplotlib; print('Plotting available')"
 
 ```bash
 # Should complete without errors
-python -m slipstick.cli --input datasets/20250317_C1E_rossella_internal.csv
+python -m slipstick.cli --input datasets/20250318_C1E_rossella_internal.csv
 
 # Should generate plots
 python -m slipstick.cli \
-    --input datasets/20250317_C1E_rossella_internal.csv \
+    --input datasets/20250318_C1E_rossella_internal.csv \
     --plot-dir test_plots/
 ```
 
@@ -423,5 +423,5 @@ python scripts/plot_spike_summary.py
 - **v1.0.0 (2025-10-21)**: Initial publication release
   - Complete signal processing pipeline
   - Comprehensive documentation
-  - Validated on 47 datasets
+  - Validated on 42 publication datasets
   - Publication-ready outputs

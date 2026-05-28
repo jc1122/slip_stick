@@ -31,7 +31,7 @@
   ],
   "description": "FTM 10-type release-test datasets, analysis code, regenerated manuscript tables and figures, and supplementary material files for a study of slip-stick dynamics in butyl pressure-sensitive adhesive and silicone release-liner systems.",
   "access_right": "open",
-  "license": "MIT",
+  "license": "cc-by-4.0",
   "keywords": [
     "slip-stick",
     "release liner",

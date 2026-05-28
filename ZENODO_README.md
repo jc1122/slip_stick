@@ -17,6 +17,7 @@ code, generated publication outputs, and manuscript-facing supplementary files.
 - `supplementary_material/`: manuscript-ready supplementary documents, release
   curve figures S1-S21, robustness summaries, and consistency audit outputs.
 - `slipstick/`: analysis package used by the generator and CLI.
+- `LICENSE`: CC BY 4.0 license notice for the archive contents.
 
 ## Regeneration
 

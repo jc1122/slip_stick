@@ -1,6 +1,6 @@
 # Slip-Stick Spike Detection
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: CC BY 4.0](https://img.shields.io/badge/License-CC_BY_4.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 
 A Python package for automated detection and analysis of slip-stick phenomena in tensile test data from FTM 10 testing machines.
@@ -430,9 +430,10 @@ For additional help, please open an issue on GitHub: https://github.com/jc1122/s
 
 ## License
 
-This project is licensed under the MIT License - see the `LICENSE` file for details.
-
-Copyright (c) 2025 Jakub Czakaj
+This Zenodo archive is licensed under the Creative Commons Attribution 4.0
+International License (CC BY 4.0). You may share and adapt the datasets, scripts,
+and generated materials, including for commercial use, provided that appropriate
+credit is given to the archive authors and the source is cited.
 
 ## Acknowledgments
 

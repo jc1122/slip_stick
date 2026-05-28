@@ -23,6 +23,7 @@ code, generated publication outputs, and manuscript-facing supplementary files.
 Run from the repository root:
 
 ```bash
+pip install -r requirements.txt
 python scripts/generate_publication_outputs.py
 ```
 

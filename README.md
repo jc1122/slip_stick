@@ -29,10 +29,9 @@ This software implements a comprehensive signal processing pipeline for identify
 - [Publication outputs](#publication-outputs)
 - [CLI reference](#cli-options-common)
 - [Examples](#examples)
-- [Validation and testing](#validation-and-testing)
+- [Validation](#validation)
 - [Citation](#citation)
 - [Troubleshooting](#troubleshooting)
-- [Contributing](#contributing--tests)
 - [License](#license)
 
 ---
@@ -42,14 +41,12 @@ This software implements a comprehensive signal processing pipeline for identify
 Install required packages:
 
 ```bash
-pip install numpy scipy
+pip install -r requirements.txt
 ```
 
-Optional plotting support:
+Optional faster vector graphics support:
 
 ```bash
-pip install matplotlib
-# optional: faster vector graphics
 pip install mplcairo
 ```
 
@@ -395,28 +392,7 @@ Generate vector publication figures:
 MPLBACKEND=module://mplcairo.base python -m slipstick.cli --input sample.csv --plot-dir figures/ --plot-format pdf --report-unit cN
 ```
 
-## Validation and testing
-
-### Test coverage
-
-The codebase includes comprehensive unit tests covering:
-- Force scaling and unit conversion utilities
-- CSV parsing and data loading
-- Noise estimation algorithms
-- Baseline fitting and residual calculation
-- Plot generation and formatting
-
-Run the test suite:
-
-```bash
-python test_refactoring.py
-```
-
-**Current metrics:**
-- Test coverage: ~45%
-- Code quality: A-grade architectural compliance
-- Linting: Passes Ruff with no errors
-- Formatting: Black-compliant
+## Validation
 
 ### Dataset validation
 
@@ -451,29 +427,6 @@ separately once the article DOI is available.
 - Performance problems: Reduce `--plot-workers` if memory is limited. Use `--max-datasets` to process subsets.
 
 For additional help, please open an issue on GitHub: https://github.com/jc1122/slip_stick/issues
-
-## Contributing & tests
-
-Run unit tests with the included test file:
-
-```bash
-python test_refactoring.py
-```
-
-For code quality checks:
-```bash
-# Install development dependencies
-pip install ruff black pre-commit
-
-# Run linting
-ruff check .
-
-# Run formatting
-black .
-
-# Install pre-commit hooks
-pre-commit install
-```
 
 ## License
 

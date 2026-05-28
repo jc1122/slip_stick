@@ -6,7 +6,22 @@ date-released: 2025-10-21
 authors:
   - family-names: "Czakaj"
     given-names: "Jakub"
-    affiliation: "Almara sp. z o.o. sp.k."
+    affiliation: "Almara sp. z o.o. sp.k.; Center for Advanced Technologies, Adam Mickiewicz University in Poznan"
+  - family-names: "Kądzielawa"
+    given-names: "Edyta"
+    affiliation: "Almara sp. z o.o. sp.k.; Faculty of Infrastructure and Environment, Czestochowa University of Technology"
+  - family-names: "Sztorch"
+    given-names: "Bogna"
+    affiliation: "Center for Advanced Technologies, Adam Mickiewicz University in Poznan"
+  - family-names: "Głowacka"
+    given-names: "Julia"
+    affiliation: "Center for Advanced Technologies, Adam Mickiewicz University in Poznan"
+  - family-names: "Frydrych"
+    given-names: "Miłosz"
+    affiliation: "Center for Advanced Technologies, Adam Mickiewicz University in Poznan"
+  - family-names: "Przekop"
+    given-names: "Robert E."
+    affiliation: "Center for Advanced Technologies, Adam Mickiewicz University in Poznan"
 abstract: >-
   A Python package for automated detection and analysis of slip-stick phenomena
   in tensile test data from FTM 10 testing machines. The software implements
@@ -26,14 +41,4 @@ keywords:
 license: MIT
 repository-code: "https://github.com/jc1122/slip_stick"
 url: "https://github.com/jc1122/slip_stick"
-# doi: 10.xxxx/xxxxx  # Add DOI when available
 type: software
-references:
-  - type: article
-    title: "Title of Related Publication"
-    authors:
-      - family-names: "Author"
-        given-names: "Name"
-    # journal: "Journal Name"
-    # year: 2025
-    # doi: 10.xxxx/xxxxx

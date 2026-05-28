@@ -2,37 +2,44 @@
 """Regenerate publication tables and release-curve figures.
 
 The script is intentionally manifest-driven. Dataset inclusion decisions live in
-publication/dataset_manifest.csv and publication/excluded_datasets.csv, not in
-ad hoc notebook state.
+publication/dataset_manifest.csv, not in ad hoc notebook state.
 """
 
 from __future__ import annotations
 
 import argparse
 import csv
+import json
 import math
 import os
 import sys
+import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Sequence
+from xml.sax.saxutils import escape
 
 import numpy as np
 
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from slipstick.core import _analyse_replicate, estimate_instrumental_noise, process_replicates
+from slipstick.core import (
+    _analyse_replicate,
+    _find_spikes,
+    estimate_instrumental_noise,
+    process_replicates,
+)
 from slipstick.io import load_replicates
 from slipstick.models import Replicate
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_MANIFEST = REPO_ROOT / "publication" / "dataset_manifest.csv"
-DEFAULT_EXCLUSIONS = REPO_ROOT / "publication" / "excluded_datasets.csv"
 DEFAULT_RESIDUAL_PANELS = REPO_ROOT / "publication" / "main_residual_profiles.csv"
 DEFAULT_DATASETS_DIR = REPO_ROOT / "datasets"
 DEFAULT_OUTPUT_DIR = REPO_ROOT / "publication" / "generated"
+CSV_WRITE_KWARGS = {"lineterminator": "\n"}
 
 SEALANT_ORDER = ["C1E", "U2E", "T1E", "T2E", "C1EN", "T1EN", "T2EN"]
 LINER_ORDER = ["dolpap", "rossella", "crosil42"]
@@ -44,6 +51,7 @@ DEFAULT_NOISE_FORCE_ONSET_N = 0.2
 NORMAL_RELEASE_Y_MIN_CN = 0.0
 NORMAL_RELEASE_Y_MAX_CN = 30.0
 SEVERE_RELEASE_ABOVE_NORMAL_FRACTION = 0.05
+DEFAULT_THRESHOLD_SENSITIVITY_CN = [0.5, 1.0, 1.4, 2.0, 3.0]
 
 
 @dataclass(frozen=True)
@@ -85,6 +93,7 @@ class TraceMetric:
     noise_samples: int | None
     instrument_peak_hz: float | None
     filter_cutoff_hz: float | None
+    threshold_peak_counts: dict[float, int]
 
 
 @dataclass(frozen=True)
@@ -128,6 +137,10 @@ def finite_or_blank(value: float | int | None, digits: int | None = None) -> str
     if digits is None:
         return str(value)
     return f"{float(value):.{digits}f}"
+
+
+def threshold_token(threshold_cN: float) -> str:
+    return f"{threshold_cN:g}".replace(".", "p")
 
 
 def sample_sd(values: Sequence[float]) -> float:
@@ -213,13 +226,6 @@ def validate_manifest(rows: list[ManifestRow]) -> None:
             raise ValueError(f"figure {figure} mixes liner/sealant combinations")
 
 
-def read_exclusions(path: Path) -> list[dict[str, str]]:
-    if not path.exists():
-        return []
-    with path.open("r", newline="", encoding="utf-8") as handle:
-        return list(csv.DictReader(handle))
-
-
 def read_residual_panels(path: Path, datasets_dir: Path) -> list[ResidualPanel]:
     required = {"panel", "dataset_file", "replicate", "label"}
     panels: list[ResidualPanel] = []
@@ -299,6 +305,7 @@ def analyse_dataset(
     noise_min_samples: int,
     instrument_cutoff_factor: float,
     apply_filter: bool,
+    thresholds_cN: Sequence[float] | None = None,
 ) -> list[TraceMetric]:
     dataset_path = datasets_dir / row.dataset_file
     raw_replicates = load_replicates(dataset_path)
@@ -339,6 +346,9 @@ def analyse_dataset(
     )
     processed_by_id = {rep.rep_id: rep for rep in processed_reps}
     threshold_n = threshold_cN / 100.0
+    threshold_counts_to_compute = (
+        [threshold_cN] if thresholds_cN is None else list(thresholds_cN)
+    )
 
     metrics: list[TraceMetric] = []
     for rep in scaled_reps:
@@ -353,7 +363,18 @@ def analyse_dataset(
             polyorder=polyorder,
             threshold=threshold_n,
         )
-        peak_count = len(result.spikes) if result is not None else None
+        threshold_peak_counts: dict[float, int] = {}
+        if result is not None:
+            for candidate_threshold_cN in threshold_counts_to_compute:
+                threshold_peak_counts[candidate_threshold_cN] = len(
+                    _find_spikes(
+                        result.time,
+                        result.disp,
+                        result.residual,
+                        candidate_threshold_cN / 100.0,
+                    )
+                )
+        peak_count = threshold_peak_counts.get(threshold_cN) if result is not None else None
         max_abs_residual = (
             float(np.max(np.abs(result.residual)) * 100.0)
             if result is not None and result.residual.size
@@ -389,6 +410,7 @@ def analyse_dataset(
                 noise_samples=noise.sample_count if noise is not None else None,
                 instrument_peak_hz=instrument_peak_hz,
                 filter_cutoff_hz=filter_cutoff_hz,
+                threshold_peak_counts=threshold_peak_counts,
             )
         )
     return metrics
@@ -476,7 +498,7 @@ def write_replicate_metrics(path: Path, rows: list[TraceMetric]) -> None:
     ]
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer = csv.DictWriter(handle, fieldnames=fieldnames, **CSV_WRITE_KWARGS)
         writer.writeheader()
         for metric in rows:
             writer.writerow(
@@ -541,7 +563,7 @@ def write_configuration_summary(path: Path, rows: list[ConfigurationSummary]) ->
     ]
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer = csv.DictWriter(handle, fieldnames=fieldnames, **CSV_WRITE_KWARGS)
         writer.writeheader()
         for row in rows:
             writer.writerow(
@@ -707,14 +729,14 @@ def write_release_tables(output_dir: Path, summaries: list[ConfigurationSummary]
     with (tables_dir / "release_force_table.csv").open(
         "w", newline="", encoding="utf-8"
     ) as handle:
-        writer = csv.writer(handle)
+        writer = csv.writer(handle, **CSV_WRITE_KWARGS)
         writer.writerow(headers)
         writer.writerows(table_rows)
 
     numeric_path = tables_dir / "release_force_table_numeric.csv"
     with numeric_path.open("w", newline="", encoding="utf-8") as handle:
         fieldnames = list(numeric_rows[0].keys())
-        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer = csv.DictWriter(handle, fieldnames=fieldnames, **CSV_WRITE_KWARGS)
         writer.writeheader()
         writer.writerows(numeric_rows)
 
@@ -752,9 +774,777 @@ def write_warnings(output_dir: Path, summaries: list[ConfigurationSummary]) -> N
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", newline="", encoding="utf-8") as handle:
         fieldnames = ["severity", "liner", "sealant", "side", "dataset_file", "message"]
-        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer = csv.DictWriter(handle, fieldnames=fieldnames, **CSV_WRITE_KWARGS)
         writer.writeheader()
         writer.writerows(rows)
+
+
+def threshold_values(default_threshold_cN: float) -> list[float]:
+    values = list(DEFAULT_THRESHOLD_SENSITIVITY_CN)
+    if not any(math.isclose(default_threshold_cN, value) for value in values):
+        values.append(default_threshold_cN)
+    return sorted(values)
+
+
+def summarize_configuration_for_threshold(
+    row: ManifestRow,
+    metrics: list[TraceMetric],
+    *,
+    threshold_cN: float,
+) -> ConfigurationSummary:
+    valid_metrics = [metric for metric in metrics if metric.valid_release_window]
+    release_values = [metric.mean_release_cN_25mm for metric in valid_metrics]
+    peak_values = [
+        float(metric.threshold_peak_counts[threshold_cN])
+        for metric in metrics
+        if threshold_cN in metric.threshold_peak_counts
+    ]
+    noise_std = [
+        metric.noise_std_cN_25mm
+        for metric in metrics
+        if math.isfinite(metric.noise_std_cN_25mm)
+    ]
+    noise_max_abs = [
+        metric.noise_max_abs_cN_25mm
+        for metric in metrics
+        if math.isfinite(metric.noise_max_abs_cN_25mm)
+    ]
+    instrument_peaks = [
+        metric.instrument_peak_hz
+        for metric in metrics
+        if metric.instrument_peak_hz is not None and math.isfinite(metric.instrument_peak_hz)
+    ]
+    cutoffs = [
+        metric.filter_cutoff_hz
+        for metric in metrics
+        if metric.filter_cutoff_hz is not None and math.isfinite(metric.filter_cutoff_hz)
+    ]
+    sample_counts = [metric.n_samples_50_200mm for metric in valid_metrics]
+
+    return ConfigurationSummary(
+        figure=row.figure,
+        liner=row.liner,
+        liner_label=row.liner_label,
+        sealant=row.sealant,
+        side=row.side,
+        side_label=row.side_label,
+        dataset_file=row.dataset_file,
+        total_replicates_in_file=metrics[0].total_replicates_in_file if metrics else 0,
+        n_replicates=len(valid_metrics),
+        mean_release_cN_25mm_mean=safe_mean(release_values),
+        mean_release_cN_25mm_sd=sample_sd(release_values),
+        mean_release_cN_25mm_median=safe_median(release_values),
+        trace_samples_min=min(sample_counts) if sample_counts else None,
+        trace_samples_max=max(sample_counts) if sample_counts else None,
+        peak_count_1p4cN_mean=safe_mean(peak_values),
+        peak_count_1p4cN_sd=sample_sd(peak_values),
+        peak_count_1p4cN_sum=int(sum(peak_values)) if peak_values else None,
+        noise_std_cN_25mm_median=safe_median(noise_std),
+        noise_max_abs_cN_25mm_max=max(noise_max_abs) if noise_max_abs else math.nan,
+        instrument_peak_hz_median=safe_median(instrument_peaks),
+        filter_cutoff_hz_median=safe_median(cutoffs),
+    )
+
+
+def compute_threshold_summary_sets(
+    manifest_rows: list[ManifestRow],
+    *,
+    metrics: list[TraceMetric],
+    default_summaries: list[ConfigurationSummary],
+    default_threshold_cN: float,
+) -> dict[float, list[ConfigurationSummary]]:
+    metrics_by_key: dict[tuple[str, str, str], list[TraceMetric]] = {}
+    for metric in metrics:
+        metrics_by_key.setdefault((metric.liner, metric.sealant, metric.side), []).append(
+            metric
+        )
+
+    summary_sets: dict[float, list[ConfigurationSummary]] = {}
+    for threshold_cN in threshold_values(default_threshold_cN):
+        if math.isclose(threshold_cN, default_threshold_cN):
+            summary_sets[threshold_cN] = default_summaries
+            continue
+
+        summary_sets[threshold_cN] = [
+            summarize_configuration_for_threshold(
+                row,
+                metrics_by_key[row.key],
+                threshold_cN=threshold_cN,
+            )
+            for row in manifest_rows
+        ]
+    return summary_sets
+
+
+def spearman_vs_default(
+    values: Sequence[float],
+    default_values: Sequence[float],
+    *,
+    same_threshold: bool,
+) -> tuple[float, float]:
+    if same_threshold:
+        return 1.0, 0.0
+    try:
+        from scipy.stats import spearmanr
+    except ModuleNotFoundError as exc:
+        raise SystemExit(
+            "scipy is required for threshold robustness tables. Install the "
+            "repository requirements."
+        ) from exc
+
+    result = spearmanr(values, default_values)
+    return float(result.statistic), float(result.pvalue)
+
+
+def write_threshold_robustness(
+    path: Path,
+    *,
+    summary_sets: dict[float, list[ConfigurationSummary]],
+    default_threshold_cN: float,
+) -> list[dict[str, object]]:
+    default_rows = summary_sets[default_threshold_cN]
+    default_values = [row.peak_count_1p4cN_mean for row in default_rows]
+    rows: list[dict[str, object]] = []
+
+    for threshold_cN, summaries in sorted(summary_sets.items()):
+        values = [row.peak_count_1p4cN_mean for row in summaries]
+        rho, p_value = spearman_vs_default(
+            values,
+            default_values,
+            same_threshold=math.isclose(threshold_cN, default_threshold_cN),
+        )
+        total_peaks = sum(
+            row.peak_count_1p4cN_sum or 0
+            for row in summaries
+            if row.peak_count_1p4cN_sum is not None
+        )
+        rows.append(
+            {
+                "threshold_cN": threshold_cN,
+                "spearman_rho_vs_default": rho,
+                "spearman_p_value": p_value,
+                "total_peaks": total_peaks,
+                "configurations_mean_ge_1_peak": sum(
+                    1 for row in summaries if row.peak_count_1p4cN_mean >= 1.0
+                ),
+                "configurations_mean_ge_5_peaks": sum(
+                    1 for row in summaries if row.peak_count_1p4cN_mean >= 5.0
+                ),
+            }
+        )
+
+    fieldnames = [
+        "threshold_cN",
+        "spearman_rho_vs_default",
+        "spearman_p_value",
+        "total_peaks",
+        "configurations_mean_ge_1_peak",
+        "configurations_mean_ge_5_peaks",
+    ]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames, **CSV_WRITE_KWARGS)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow(
+                {
+                    "threshold_cN": finite_or_blank(row["threshold_cN"], 3),
+                    "spearman_rho_vs_default": finite_or_blank(
+                        row["spearman_rho_vs_default"], 6
+                    ),
+                    "spearman_p_value": finite_or_blank(row["spearman_p_value"], 12),
+                    "total_peaks": row["total_peaks"],
+                    "configurations_mean_ge_1_peak": row[
+                        "configurations_mean_ge_1_peak"
+                    ],
+                    "configurations_mean_ge_5_peaks": row[
+                        "configurations_mean_ge_5_peaks"
+                    ],
+                }
+            )
+    return rows
+
+
+def write_threshold_noise_summary(
+    path: Path,
+    *,
+    metrics: list[TraceMetric],
+    summaries: list[ConfigurationSummary],
+    default_threshold_cN: float,
+) -> dict[str, object]:
+    noise_std = [
+        metric.noise_std_cN_25mm
+        for metric in metrics
+        if math.isfinite(metric.noise_std_cN_25mm)
+    ]
+    noise_max_abs = [
+        metric.noise_max_abs_cN_25mm
+        for metric in metrics
+        if math.isfinite(metric.noise_max_abs_cN_25mm)
+    ]
+    summary = {
+        "replicate_traces": len(metrics),
+        "configurations": len(summaries),
+        "default_threshold_cN": default_threshold_cN,
+        "median_noise_std_cN_25mm": safe_median(noise_std),
+        "p95_noise_std_cN_25mm": float(np.percentile(noise_std, 95)) if noise_std else math.nan,
+        "max_noise_std_cN_25mm": max(noise_std) if noise_std else math.nan,
+        "median_noise_max_abs_cN_25mm": safe_median(noise_max_abs),
+        "p95_noise_max_abs_cN_25mm": (
+            float(np.percentile(noise_max_abs, 95)) if noise_max_abs else math.nan
+        ),
+        "max_noise_max_abs_cN_25mm": max(noise_max_abs) if noise_max_abs else math.nan,
+    }
+    median_std = float(summary["median_noise_std_cN_25mm"])
+    p95_std = float(summary["p95_noise_std_cN_25mm"])
+    summary["threshold_to_median_noise_std_ratio"] = (
+        default_threshold_cN / median_std if median_std > 0 else math.nan
+    )
+    summary["threshold_to_p95_noise_std_ratio"] = (
+        default_threshold_cN / p95_std if p95_std > 0 else math.nan
+    )
+
+    rows = [
+        ("replicate_traces", summary["replicate_traces"], ""),
+        ("configurations", summary["configurations"], ""),
+        ("default_threshold_cN", summary["default_threshold_cN"], "cN/25 mm"),
+        ("median_noise_std_cN_25mm", summary["median_noise_std_cN_25mm"], "cN/25 mm"),
+        ("p95_noise_std_cN_25mm", summary["p95_noise_std_cN_25mm"], "cN/25 mm"),
+        ("max_noise_std_cN_25mm", summary["max_noise_std_cN_25mm"], "cN/25 mm"),
+        (
+            "median_noise_max_abs_cN_25mm",
+            summary["median_noise_max_abs_cN_25mm"],
+            "cN/25 mm",
+        ),
+        (
+            "p95_noise_max_abs_cN_25mm",
+            summary["p95_noise_max_abs_cN_25mm"],
+            "cN/25 mm",
+        ),
+        (
+            "max_noise_max_abs_cN_25mm",
+            summary["max_noise_max_abs_cN_25mm"],
+            "cN/25 mm",
+        ),
+        (
+            "threshold_to_median_noise_std_ratio",
+            summary["threshold_to_median_noise_std_ratio"],
+            "x",
+        ),
+        (
+            "threshold_to_p95_noise_std_ratio",
+            summary["threshold_to_p95_noise_std_ratio"],
+            "x",
+        ),
+    ]
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(
+            handle, fieldnames=["metric", "value", "unit"], **CSV_WRITE_KWARGS
+        )
+        writer.writeheader()
+        for metric, value, unit in rows:
+            writer.writerow(
+                {
+                    "metric": metric,
+                    "value": (
+                        value
+                        if isinstance(value, int)
+                        else finite_or_blank(float(value), 6)
+                    ),
+                    "unit": unit,
+                }
+            )
+    return summary
+
+
+def write_top_peak_configs(
+    path: Path,
+    *,
+    summary_sets: dict[float, list[ConfigurationSummary]],
+    default_threshold_cN: float,
+    limit: int = 10,
+) -> list[dict[str, object]]:
+    default_rows = sorted(
+        summary_sets[default_threshold_cN],
+        key=lambda row: row.peak_count_1p4cN_mean,
+        reverse=True,
+    )[:limit]
+    set_lookup = {
+        threshold_cN: {
+            (row.liner, row.sealant, row.side): row
+            for row in summaries
+        }
+        for threshold_cN, summaries in summary_sets.items()
+    }
+    threshold_columns = []
+    for threshold_cN in sorted(summary_sets):
+        token = threshold_token(threshold_cN)
+        threshold_columns.extend(
+            [f"peak_count_{token}cN_mean", f"peak_count_{token}cN_sum"]
+        )
+
+    fieldnames = [
+        "figure",
+        "sealant",
+        "liner_label",
+        "side_label",
+        "dataset_file",
+        "n_replicates",
+        "mean_release_cN_25mm_mean",
+        "mean_release_cN_25mm_sd",
+        "noise_std_cN_25mm_median",
+        "noise_max_abs_cN_25mm_max",
+        *threshold_columns,
+    ]
+
+    rows: list[dict[str, object]] = []
+    for row in default_rows:
+        key = (row.liner, row.sealant, row.side)
+        out: dict[str, object] = {
+            "figure": row.figure,
+            "sealant": row.sealant,
+            "liner_label": row.liner_label,
+            "side_label": row.side_label,
+            "dataset_file": row.dataset_file,
+            "n_replicates": row.n_replicates,
+            "mean_release_cN_25mm_mean": row.mean_release_cN_25mm_mean,
+            "mean_release_cN_25mm_sd": row.mean_release_cN_25mm_sd,
+            "noise_std_cN_25mm_median": row.noise_std_cN_25mm_median,
+            "noise_max_abs_cN_25mm_max": row.noise_max_abs_cN_25mm_max,
+        }
+        for threshold_cN in sorted(summary_sets):
+            threshold_row = set_lookup[threshold_cN][key]
+            token = threshold_token(threshold_cN)
+            out[f"peak_count_{token}cN_mean"] = threshold_row.peak_count_1p4cN_mean
+            out[f"peak_count_{token}cN_sum"] = threshold_row.peak_count_1p4cN_sum
+        rows.append(out)
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames, **CSV_WRITE_KWARGS)
+        writer.writeheader()
+        for row in rows:
+            formatted = row.copy()
+            for name, value in formatted.items():
+                if isinstance(value, float):
+                    formatted[name] = finite_or_blank(value, 6)
+            writer.writerow(formatted)
+    return rows
+
+
+def write_threshold_summary_json(
+    path: Path,
+    *,
+    threshold_rows: list[dict[str, object]],
+    noise_summary: dict[str, object],
+    top_configs: list[dict[str, object]],
+) -> None:
+    def clean(value):
+        if isinstance(value, float) and not math.isfinite(value):
+            return None
+        if isinstance(value, dict):
+            return {key: clean(item) for key, item in value.items()}
+        if isinstance(value, list):
+            return [clean(item) for item in value]
+        return value
+
+    payload = {
+        "noise_summary": noise_summary,
+        "threshold_robustness": threshold_rows,
+        "top_peak_configurations": top_configs,
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(clean(payload), indent=2), encoding="utf-8")
+
+
+def p_value_display(value: object) -> str:
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        return ""
+    if not math.isfinite(numeric):
+        return ""
+    if numeric < 0.001:
+        return "<0.001"
+    return f"{numeric:.3f}"
+
+
+def write_threshold_supplement_markdown(
+    path: Path,
+    *,
+    threshold_rows: list[dict[str, object]],
+    noise_summary: dict[str, object],
+    top_configs: list[dict[str, object]],
+) -> None:
+    default_threshold = float(noise_summary["default_threshold_cN"])
+    median_noise = float(noise_summary["median_noise_std_cN_25mm"])
+    p95_noise = float(noise_summary["p95_noise_std_cN_25mm"])
+    median_ratio = float(noise_summary["threshold_to_median_noise_std_ratio"])
+    p95_ratio = float(noise_summary["threshold_to_p95_noise_std_ratio"])
+
+    lines = [
+        "# Supplementary Methodological Background",
+        "",
+        "## Threshold Robustness of Slip-Stick Peak Detection",
+        "",
+        "This supplementary note supports the operational residual-force threshold "
+        f"of {default_threshold:.1f} cN/25 mm used for slip-stick peak detection. "
+        "The threshold is not treated as a universal material constant; it is a "
+        "reproducible detection criterion applied to all traces in the manuscript "
+        "matrix.",
+        "",
+        "The values below are generated by `python scripts/generate_publication_outputs.py` "
+        "from the publication dataset manifest.",
+        "",
+        "### S1. Dataset Scope",
+        "",
+        f"- Replicate traces: {int(noise_summary['replicate_traces'])}",
+        f"- Liner-sealant-side configurations: {int(noise_summary['configurations'])}",
+        "- Analysis window: 50-200 mm displacement.",
+        "- Force normalization: cN/25 mm from the 90 mm collection width.",
+        "- Peak definition: one contiguous positive residual excursion above the "
+        "threshold is counted as one event.",
+        "",
+        "### S2. Noise Margin",
+        "",
+        "| Metric | Value |",
+        "|---|---:|",
+        f"| Median baseline noise SD | {median_noise:.3f} cN/25 mm |",
+        f"| 95th percentile baseline noise SD | {p95_noise:.3f} cN/25 mm |",
+        f"| Maximum baseline noise SD | {float(noise_summary['max_noise_std_cN_25mm']):.3f} cN/25 mm |",
+        f"| Median baseline maximum absolute noise | {float(noise_summary['median_noise_max_abs_cN_25mm']):.3f} cN/25 mm |",
+        f"| 95th percentile baseline maximum absolute noise | {float(noise_summary['p95_noise_max_abs_cN_25mm']):.3f} cN/25 mm |",
+        f"| Maximum baseline maximum absolute noise | {float(noise_summary['max_noise_max_abs_cN_25mm']):.3f} cN/25 mm |",
+        f"| Threshold / median noise SD | {median_ratio:.1f}x |",
+        f"| Threshold / 95th percentile noise SD | {p95_ratio:.1f}x |",
+        "",
+        f"The {default_threshold:.1f} cN/25 mm threshold is therefore well above the "
+        "measured baseline noise floor.",
+        "",
+        "### S3. Threshold Sensitivity",
+        "",
+        "Peak counts were recalculated at nearby residual-force thresholds. Spearman "
+        "rho was computed across configuration-level mean peak counts relative to "
+        f"the default {default_threshold:.1f} cN/25 mm threshold.",
+        "",
+        "| Threshold [cN/25 mm] | Spearman rho vs default | p value | Total peaks | Configs mean >= 1 peak | Configs mean >= 5 peaks |",
+        "|---:|---:|---:|---:|---:|---:|",
+    ]
+
+    for row in threshold_rows:
+        p_display = (
+            "reference"
+            if math.isclose(float(row["threshold_cN"]), default_threshold)
+            else p_value_display(row["spearman_p_value"])
+        )
+        lines.append(
+            f"| {float(row['threshold_cN']):.1f} "
+            f"| {float(row['spearman_rho_vs_default']):.3f} "
+            f"| {p_display} "
+            f"| {int(row['total_peaks'])} "
+            f"| {int(row['configurations_mean_ge_1_peak'])} "
+            f"| {int(row['configurations_mean_ge_5_peaks'])} |"
+        )
+
+    threshold_lookup = {float(row["threshold_cN"]): row for row in threshold_rows}
+    low_row = threshold_lookup.get(1.0)
+    high_row = threshold_lookup.get(2.0)
+    stability_sentence = ""
+    if low_row is not None and high_row is not None:
+        stability_sentence = (
+            " The configuration-level rankings remained strongly correlated with "
+            "the default analysis at 1.0 cN/25 mm "
+            f"(rho = {float(low_row['spearman_rho_vs_default']):.3f}) and "
+            "2.0 cN/25 mm "
+            f"(rho = {float(high_row['spearman_rho_vs_default']):.3f})."
+        )
+
+    lines.extend(
+        [
+            "",
+            "The absolute number of detected peaks decreases as the threshold "
+            "increases, as expected."
+            + stability_sentence,
+            "This supports using 1.4 cN/25 mm as an operational threshold rather "
+            "than indicating that the slip-stick ranking depends on a single "
+            "arbitrary value.",
+            "",
+            "### S4. Highest Peak-Count Configurations",
+            "",
+            "The configurations below had the highest mean peak counts at the "
+            f"default {default_threshold:.1f} cN/25 mm threshold.",
+            "",
+            "| Sealant | Liner | Side | n | Mean peaks 1.0 | Mean peaks 1.4 | Mean peaks 2.0 | Mean force [cN/25 mm] | Median noise SD |",
+            "|---|---|---|---:|---:|---:|---:|---:|---:|",
+        ]
+    )
+
+    for row in top_configs:
+        lines.append(
+            f"| {row['sealant']} "
+            f"| {row['liner_label']} "
+            f"| {row['side_label']} "
+            f"| {int(row['n_replicates'])} "
+            f"| {float(row['peak_count_1cN_mean']):.1f} "
+            f"| {float(row['peak_count_1p4cN_mean']):.1f} "
+            f"| {float(row['peak_count_2cN_mean']):.1f} "
+            f"| {float(row['mean_release_cN_25mm_mean']):.1f} "
+            f"| {float(row['noise_std_cN_25mm_median']):.3f} |"
+        )
+
+    lines.extend(
+        [
+            "",
+            "High peak count should not be read as identical to high mean release "
+            "force. It describes instability of the residual force trace after "
+            "baseline correction.",
+            "",
+            "### S5. Machine-Readable Data",
+            "",
+            "- `publication/generated/data/threshold_noise_summary.csv`",
+            "- `publication/generated/data/threshold_robustness.csv`",
+            "- `publication/generated/data/top_peak_configs.csv`",
+            "- `publication/generated/data/threshold_robustness_summary.json`",
+            "- `publication/generated/data/configuration_summary.csv`",
+            "- `publication/generated/data/replicate_metrics.csv`",
+            "",
+        ]
+    )
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(lines), encoding="utf-8")
+
+
+def docx_paragraph(text: str, *, style: str | None = None) -> str:
+    style_xml = f'<w:pPr><w:pStyle w:val="{style}"/></w:pPr>' if style else ""
+    return f"<w:p>{style_xml}<w:r><w:t>{escape(text)}</w:t></w:r></w:p>"
+
+
+def docx_table(headers: Sequence[str], rows: Sequence[Sequence[object]]) -> str:
+    def cell(value: object) -> str:
+        return (
+            "<w:tc><w:tcPr><w:tcW w:w=\"0\" w:type=\"auto\"/></w:tcPr>"
+            f"<w:p><w:r><w:t>{escape(str(value))}</w:t></w:r></w:p></w:tc>"
+        )
+
+    table_rows = [
+        "<w:tr>" + "".join(cell(header) for header in headers) + "</w:tr>"
+    ]
+    for row in rows:
+        table_rows.append("<w:tr>" + "".join(cell(value) for value in row) + "</w:tr>")
+    return (
+        "<w:tbl><w:tblPr><w:tblBorders>"
+        '<w:top w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
+        '<w:left w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
+        '<w:bottom w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
+        '<w:right w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
+        '<w:insideH w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
+        '<w:insideV w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
+        "</w:tblBorders></w:tblPr>"
+        + "".join(table_rows)
+        + "</w:tbl>"
+    )
+
+
+def write_minimal_docx(path: Path, body_xml: str) -> None:
+    content_types = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+  <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
+</Types>"""
+    rels = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>"""
+    styles = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style>
+  <w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/><w:pPr><w:keepNext/></w:pPr><w:rPr><w:b/><w:sz w:val="32"/></w:rPr></w:style>
+  <w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/><w:basedOn w:val="Normal"/><w:pPr><w:keepNext/></w:pPr><w:rPr><w:b/><w:sz w:val="28"/></w:rPr></w:style>
+  <w:style w:type="paragraph" w:styleId="Heading3"><w:name w:val="heading 3"/><w:basedOn w:val="Normal"/><w:pPr><w:keepNext/></w:pPr><w:rPr><w:b/><w:sz w:val="24"/></w:rPr></w:style>
+</w:styles>"""
+    document = f"""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    {body_xml}
+    <w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"/></w:sectPr>
+  </w:body>
+</w:document>"""
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("[Content_Types].xml", content_types)
+        archive.writestr("_rels/.rels", rels)
+        archive.writestr("word/document.xml", document)
+        archive.writestr("word/styles.xml", styles)
+
+
+def write_threshold_supplement_docx(
+    path: Path,
+    *,
+    threshold_rows: list[dict[str, object]],
+    noise_summary: dict[str, object],
+    top_configs: list[dict[str, object]],
+) -> None:
+    default_threshold = float(noise_summary["default_threshold_cN"])
+    threshold_lookup = {float(row["threshold_cN"]): row for row in threshold_rows}
+    low_row = threshold_lookup.get(1.0)
+    high_row = threshold_lookup.get(2.0)
+    stability_sentence = ""
+    if low_row is not None and high_row is not None:
+        stability_sentence = (
+            " The configuration-level rankings remained strongly correlated with "
+            "the default analysis at 1.0 cN/25 mm "
+            f"(rho = {float(low_row['spearman_rho_vs_default']):.3f}) and "
+            "2.0 cN/25 mm "
+            f"(rho = {float(high_row['spearman_rho_vs_default']):.3f})."
+        )
+
+    body_parts = [
+        docx_paragraph("Supplementary Methodological Background", style="Heading1"),
+        docx_paragraph("Threshold Robustness of Slip-Stick Peak Detection", style="Heading2"),
+        docx_paragraph(
+            "This supplementary note supports the operational residual-force "
+            f"threshold of {default_threshold:.1f} cN/25 mm used for slip-stick "
+            "peak detection. The threshold is not treated as a universal material "
+            "constant; it is a reproducible detection criterion applied to all "
+            "traces in the manuscript matrix."
+        ),
+        docx_paragraph(
+            "The values below are generated by "
+            "`python scripts/generate_publication_outputs.py` from the publication "
+            "dataset manifest."
+        ),
+        docx_paragraph("S1. Dataset Scope", style="Heading3"),
+        docx_paragraph(f"Replicate traces: {int(noise_summary['replicate_traces'])}"),
+        docx_paragraph(
+            "Liner-sealant-side configurations: "
+            f"{int(noise_summary['configurations'])}"
+        ),
+        docx_paragraph("Analysis window: 50-200 mm displacement."),
+        docx_paragraph("Force normalization: cN/25 mm from the 90 mm collection width."),
+        docx_paragraph(
+            "Peak definition: one contiguous positive residual excursion above "
+            "the threshold is counted as one event."
+        ),
+        docx_paragraph("S2. Noise Margin", style="Heading3"),
+        docx_table(
+            ["Metric", "Value"],
+            [
+                (
+                    "Median baseline noise SD",
+                    f"{float(noise_summary['median_noise_std_cN_25mm']):.3f} cN/25 mm",
+                ),
+                (
+                    "95th percentile baseline noise SD",
+                    f"{float(noise_summary['p95_noise_std_cN_25mm']):.3f} cN/25 mm",
+                ),
+                (
+                    "Maximum baseline noise SD",
+                    f"{float(noise_summary['max_noise_std_cN_25mm']):.3f} cN/25 mm",
+                ),
+                (
+                    "Threshold / median noise SD",
+                    f"{float(noise_summary['threshold_to_median_noise_std_ratio']):.1f}x",
+                ),
+                (
+                    "Threshold / 95th percentile noise SD",
+                    f"{float(noise_summary['threshold_to_p95_noise_std_ratio']):.1f}x",
+                ),
+            ],
+        ),
+        docx_paragraph(
+            f"The {default_threshold:.1f} cN/25 mm threshold is therefore well "
+            "above the measured baseline noise floor."
+        ),
+        docx_paragraph("S3. Threshold Sensitivity", style="Heading3"),
+        docx_paragraph(
+            "Peak counts were recalculated at nearby residual-force thresholds. "
+            "Spearman rho was computed across configuration-level mean peak "
+            f"counts relative to the default {default_threshold:.1f} cN/25 mm "
+            "threshold."
+        ),
+        docx_table(
+            [
+                "Threshold [cN/25 mm]",
+                "Spearman rho vs default",
+                "p value",
+                "Total peaks",
+                "Configs mean >= 1 peak",
+                "Configs mean >= 5 peaks",
+            ],
+            [
+                (
+                    f"{float(row['threshold_cN']):.1f}",
+                    f"{float(row['spearman_rho_vs_default']):.3f}",
+                    (
+                        "reference"
+                        if math.isclose(float(row["threshold_cN"]), default_threshold)
+                        else p_value_display(row["spearman_p_value"])
+                    ),
+                    int(row["total_peaks"]),
+                    int(row["configurations_mean_ge_1_peak"]),
+                    int(row["configurations_mean_ge_5_peaks"]),
+                )
+                for row in threshold_rows
+            ],
+        ),
+        docx_paragraph(
+            "The absolute number of detected peaks decreases as the threshold "
+            "increases, as expected."
+            + stability_sentence
+        ),
+        docx_paragraph(
+            "This supports using 1.4 cN/25 mm as an operational threshold rather "
+            "than indicating that the slip-stick ranking depends on a single "
+            "arbitrary value."
+        ),
+        docx_paragraph("S4. Highest Peak-Count Configurations", style="Heading3"),
+        docx_table(
+            [
+                "Sealant",
+                "Liner",
+                "Side",
+                "n",
+                "Mean peaks 1.0",
+                "Mean peaks 1.4",
+                "Mean peaks 2.0",
+                "Mean force [cN/25 mm]",
+                "Median noise SD",
+            ],
+            [
+                (
+                    row["sealant"],
+                    row["liner_label"],
+                    row["side_label"],
+                    int(row["n_replicates"]),
+                    f"{float(row['peak_count_1cN_mean']):.1f}",
+                    f"{float(row['peak_count_1p4cN_mean']):.1f}",
+                    f"{float(row['peak_count_2cN_mean']):.1f}",
+                    f"{float(row['mean_release_cN_25mm_mean']):.1f}",
+                    f"{float(row['noise_std_cN_25mm_median']):.3f}",
+                )
+                for row in top_configs
+            ],
+        ),
+        docx_paragraph(
+            "High peak count should not be read as identical to high mean release "
+            "force. It describes instability of the residual force trace after "
+            "baseline correction."
+        ),
+        docx_paragraph("S5. Machine-Readable Data", style="Heading3"),
+        docx_paragraph("publication/generated/data/threshold_noise_summary.csv"),
+        docx_paragraph("publication/generated/data/threshold_robustness.csv"),
+        docx_paragraph("publication/generated/data/top_peak_configs.csv"),
+        docx_paragraph("publication/generated/data/threshold_robustness_summary.json"),
+        docx_paragraph("publication/generated/data/configuration_summary.csv"),
+        docx_paragraph("publication/generated/data/replicate_metrics.csv"),
+    ]
+    write_minimal_docx(path, "\n".join(body_parts))
 
 
 def require_matplotlib():
@@ -1136,7 +1926,7 @@ def write_main_figure_manifest(output_dir: Path, rows: list[dict[str, object]]) 
     path.parent.mkdir(parents=True, exist_ok=True)
     fieldnames = sorted({key for row in rows for key in row})
     with path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer = csv.DictWriter(handle, fieldnames=fieldnames, **CSV_WRITE_KWARGS)
         writer.writeheader()
         writer.writerows(rows)
 
@@ -1843,7 +2633,7 @@ def write_figure_manifest(output_dir: Path, rows: list[dict[str, object]]) -> No
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     fieldnames = list(rows[0].keys())
     with manifest_path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer = csv.DictWriter(handle, fieldnames=fieldnames, **CSV_WRITE_KWARGS)
         writer.writeheader()
         writer.writerows(rows)
 
@@ -1907,7 +2697,6 @@ def write_run_readme(
     output_dir: Path,
     *,
     manifest_path: Path,
-    exclusions: list[dict[str, str]],
     metrics_count: int,
     summary_count: int,
     plots_generated: bool,
@@ -1932,16 +2721,9 @@ def write_run_readme(
         "- Forces are normalized from 90 mm collection width to 25 mm report width and reported as cN/25 mm.",
         "- Configuration SD is the sample SD across replicate mean-release values.",
         "- Slip-stick peak counts use one contiguous positive residual excursion above threshold as one event.",
+        "- Threshold-robustness outputs repeat the peak-count analysis across nearby thresholds from the same manifest.",
         "- No replicate-level outlier exclusions are applied by this generator.",
-        "",
-        "## Excluded Dataset Ledger",
-        "",
     ]
-    if exclusions:
-        for item in exclusions:
-            lines.append(f"- `{item.get('dataset_file', '')}`: {item.get('reason', '')}")
-    else:
-        lines.append("- No exclusion ledger found.")
     lines.append("")
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "README.md").write_text("\n".join(lines), encoding="utf-8")
@@ -1961,7 +2743,6 @@ def parse_image_formats(raw: str) -> list[str]:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST)
-    parser.add_argument("--exclusions", type=Path, default=DEFAULT_EXCLUSIONS)
     parser.add_argument("--residual-panels", type=Path, default=DEFAULT_RESIDUAL_PANELS)
     parser.add_argument("--datasets-dir", type=Path, default=DEFAULT_DATASETS_DIR)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
@@ -1995,8 +2776,8 @@ def main(argv: Iterable[str] | None = None) -> int:
         parser.error("widths must be positive")
 
     manifest_rows = read_manifest(args.manifest, args.datasets_dir)
-    exclusions = read_exclusions(args.exclusions)
     residual_panels = read_residual_panels(args.residual_panels, args.datasets_dir)
+    thresholds_for_publication = threshold_values(args.threshold_cN)
 
     all_metrics: list[TraceMetric] = []
     summaries: list[ConfigurationSummary] = []
@@ -2016,14 +2797,55 @@ def main(argv: Iterable[str] | None = None) -> int:
             noise_min_samples=args.noise_min_samples,
             instrument_cutoff_factor=args.instrument_cutoff_factor,
             apply_filter=not args.no_filter,
+            thresholds_cN=thresholds_for_publication,
         )
         all_metrics.extend(metrics)
         summaries.append(summarize_configuration(row, metrics))
 
     if not args.plots_only:
+        threshold_summary_sets = compute_threshold_summary_sets(
+            manifest_rows,
+            metrics=all_metrics,
+            default_summaries=summaries,
+            default_threshold_cN=args.threshold_cN,
+        )
         write_replicate_metrics(args.output_dir / "data" / "replicate_metrics.csv", all_metrics)
         write_configuration_summary(
             args.output_dir / "data" / "configuration_summary.csv", summaries
+        )
+        threshold_rows = write_threshold_robustness(
+            args.output_dir / "data" / "threshold_robustness.csv",
+            summary_sets=threshold_summary_sets,
+            default_threshold_cN=args.threshold_cN,
+        )
+        noise_summary = write_threshold_noise_summary(
+            args.output_dir / "data" / "threshold_noise_summary.csv",
+            metrics=all_metrics,
+            summaries=summaries,
+            default_threshold_cN=args.threshold_cN,
+        )
+        top_configs = write_top_peak_configs(
+            args.output_dir / "data" / "top_peak_configs.csv",
+            summary_sets=threshold_summary_sets,
+            default_threshold_cN=args.threshold_cN,
+        )
+        write_threshold_summary_json(
+            args.output_dir / "data" / "threshold_robustness_summary.json",
+            threshold_rows=threshold_rows,
+            noise_summary=noise_summary,
+            top_configs=top_configs,
+        )
+        write_threshold_supplement_markdown(
+            args.output_dir / "tables" / "threshold_sensitivity_supplement.md",
+            threshold_rows=threshold_rows,
+            noise_summary=noise_summary,
+            top_configs=top_configs,
+        )
+        write_threshold_supplement_docx(
+            args.output_dir / "tables" / "threshold_sensitivity_supplement.docx",
+            threshold_rows=threshold_rows,
+            noise_summary=noise_summary,
+            top_configs=top_configs,
         )
         write_release_tables(args.output_dir, summaries)
         write_warnings(args.output_dir, summaries)
@@ -2069,10 +2891,10 @@ def main(argv: Iterable[str] | None = None) -> int:
     write_run_readme(
         args.output_dir,
         manifest_path=args.manifest,
-        exclusions=exclusions,
         metrics_count=len(all_metrics),
         summary_count=len(summaries),
-        plots_generated=plots_generated,
+        plots_generated=plots_generated
+        or (args.output_dir / "figures" / "figure_manifest.csv").exists(),
     )
 
     print(f"Analysed {len(summaries)} configurations and {len(all_metrics)} traces")

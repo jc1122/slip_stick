@@ -6,17 +6,14 @@ code, generated publication outputs, and manuscript-facing supplementary files.
 
 ## Main Contents
 
-- `datasets/`: source FTM 10-type CSV datasets.
+- `datasets/`: the 42 source FTM 10-type CSV datasets used in the manuscript.
 - `publication/dataset_manifest.csv`: canonical inclusion matrix for the
   manuscript release-force and slip-stick analyses.
-- `publication/excluded_datasets.csv`: explicit ledger of datasets not used in
-  the manuscript matrix.
 - `scripts/generate_publication_outputs.py`: canonical table and figure
   generator.
 - `publication/generated/`: regenerated tables, summary data, figure files,
-  captions, and manifests.
-- `analysis/robustness_stats_2026-05-26/`: threshold-robustness analysis output
-  used to support the slip-stick detection method.
+  captions, manifests, and threshold-sensitivity outputs used to support the
+  slip-stick detection method.
 - `supplementary_material/`: manuscript-ready supplementary documents, release
   curve figures S1-S21, robustness summaries, and consistency audit outputs.
 - `slipstick/`: analysis package used by the generator and CLI.
@@ -30,7 +27,8 @@ python scripts/generate_publication_outputs.py
 ```
 
 This regenerates the publication tables and figures from the datasets and
-manifest. Use `--tables-only` when only the tabular outputs are needed.
+manifest, including the threshold-sensitivity data used by the robustness
+supplement. Use `--tables-only` when only the tabular outputs are needed.
 
 ## Deliberate Exclusions
 

@@ -58,13 +58,13 @@ pip install mplcairo
 Analyze one file:
 
 ```bash
-python -m slipstick.cli --input datasets/20250317_C1E_rossella_internal.csv
+python -m slipstick.cli --input datasets/20250318_C1E_rossella_internal.csv
 ```
 
 Produce plots:
 
 ```bash
-python -m slipstick.cli --input datasets/20250317_C1E_rossella_internal.csv --plot-dir plots/
+python -m slipstick.cli --input datasets/20250318_C1E_rossella_internal.csv --plot-dir plots/
 ```
 
 Batch processing (simple):
@@ -115,7 +115,6 @@ python scripts/generate_publication_outputs.py --tables-only
 
 Inputs:
 - `publication/dataset_manifest.csv`: the 42 dataset files in the publication matrix.
-- `publication/excluded_datasets.csv`: files intentionally excluded from the matrix.
 
 Outputs are written under `publication/generated/`, including the release-force
 table, replicate-level metrics, configuration summaries, warnings, main data
@@ -203,7 +202,7 @@ The method has been validated through:
 - **Threshold selection**: 1.4 cN/25 mm exceeds 10× typical noise floor
 - **Visual inspection**: Automated detections match manual spike identification
 - **Reproducibility**: Consistent results across replicate tests (n=10 per dataset)
-- **Sensitivity analysis**: Tested across 47 datasets spanning 3 material types and 4 films
+- **Sensitivity analysis**: Tested across 42 publication datasets spanning 3 liner types and 7 sealants
 
 ## Concepts
 
@@ -421,12 +420,12 @@ python test_refactoring.py
 
 ### Dataset validation
 
-The software has been validated on 47 real-world datasets comprising:
+The software has been validated on the 42 publication datasets comprising:
 - **Material types**: 7 (C1E, T1E, T1EN, C1EN, T2EN, U2E, T2E)
-- **Film types**: 4 (rossella, crosil42, dolpap, silphan)
+- **Liner types**: 3 (rossella, crosil42, dolpap)
 - **Test configurations**: Internal and external surfaces
 - **Replicates per dataset**: Typically 10-11
-- **Total measurements**: >400 individual replicate tests
+- **Total measurements**: 424 individual replicate tests
 
 ### Reproducibility
 

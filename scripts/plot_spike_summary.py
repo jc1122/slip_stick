@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Create a summary plot of the number of spikes for each material/film/side combination."""
 
+import csv
 import re
 from pathlib import Path
 from typing import List, Dict, Any
@@ -12,6 +13,16 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 SUMMARIES_DIR = Path(__file__).resolve().parents[1] / "summaries"
 OUTPUT_DIR = Path(__file__).resolve().parents[1]
+MANIFEST_PATH = Path(__file__).resolve().parents[1] / "publication" / "dataset_manifest.csv"
+
+
+def manifest_summary_stems(manifest_path: Path = MANIFEST_PATH) -> set[str]:
+    """Return dataset stems that belong to the publication manifest."""
+    if not manifest_path.exists():
+        return set()
+    with manifest_path.open("r", newline="", encoding="utf-8") as handle:
+        reader = csv.DictReader(handle)
+        return {Path(row["dataset_file"]).stem for row in reader}
 
 
 def parse_summary_data(summaries_dir: Path) -> pd.DataFrame:
@@ -24,7 +35,12 @@ def parse_summary_data(summaries_dir: Path) -> pd.DataFrame:
         A DataFrame with the parsed data.
     """
     data: List[Dict[str, Any]] = []
-    summary_files = sorted(summaries_dir.glob("*.txt"))
+    allowed_stems = manifest_summary_stems()
+    summary_files = sorted(
+        summary_file
+        for summary_file in summaries_dir.glob("*.txt")
+        if not allowed_stems or summary_file.stem in allowed_stems
+    )
 
     for summary_file in summary_files:
         match = re.match(
@@ -34,8 +50,6 @@ def parse_summary_data(summaries_dir: Path) -> pd.DataFrame:
             continue
 
         date, material_type, film_type, side = match.groups()
-        if film_type == "silphan":
-            continue
 
         try:
             with open(summary_file, "r") as f:

@@ -100,11 +100,11 @@ python -m unittest test_refactoring.TestForceScaling.test_scale_force_array_basi
 
 **Batch processing validation:**
 ```bash
-# Process all 47 datasets
+# Process all 42 publication datasets
 python scripts/run_all.py --slipstick-workers 4 --plot-workers 4
 
 # Verify outputs
-ls summaries/*.txt | wc -l  # Should be 47
+ls summaries/*.txt | wc -l  # Should be 42
 ls plots/analysis/*.png | wc -l  # Should be ~470
 ls plots/noise/*.png | wc -l  # Should be ~520
 ls plots/spectra/*.png | wc -l  # Should be ~510
@@ -152,7 +152,7 @@ python -m slipstick.cli --input dataset.csv --plot-dir analysis_qc/
 ### Replicate Reproducibility
 
 **Test setup:**
-- 47 datasets with 10-11 replicates each
+- 42 publication datasets with 10-11 replicates each
 - Identical experimental conditions per dataset
 - Compare noise characteristics across replicates
 
@@ -249,19 +249,19 @@ Factor | Cutoff (Hz) | Effect
 
 ### Dataset Characteristics
 
-**Processed datasets:** 47 complete experiments
+**Processed datasets:** 42 complete publication experiments
 
 **Material types:** 7
 - C1E, T1E, T1EN, C1EN, T2EN, U2E, T2E
 
-**Film types:** 4
-- rossella, crosil42, dolpap, silphan
+**Liner types:** 3
+- rossella, crosil42, dolpap
 
 **Test configurations:** 2
 - Internal surface
 - External surface
 
-**Total measurements:** >400 individual replicates
+**Total measurements:** 424 individual replicates
 
 ### Validation Results
 

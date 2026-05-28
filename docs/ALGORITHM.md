@@ -251,15 +251,15 @@ residual = cropped_force - baseline
 
 **Purpose:** Identify residual excursions exceeding detection threshold.
 
-**Algorithm:** Peak detection on absolute residual
+**Algorithm:** Threshold-excursion grouping on positive residual
 
 ```python
-from scipy.signal import find_peaks
-
-peak_indices, _ = find_peaks(
-    np.abs(residual),
-    height=threshold
-)
+above_threshold = residual >= threshold
+starts, ends = contiguous_true_regions(above_threshold)
+event_indices = [
+    start + np.argmax(residual[start:end])
+    for start, end in zip(starts, ends)
+]
 ```
 
 **Threshold selection:**
@@ -269,18 +269,18 @@ peak_indices, _ = find_peaks(
 
 **Peak properties:**
 ```python
-for idx in peak_indices:
+for idx in event_indices:
     spike = Spike(
         index=idx,
         time_s=cropped_time[idx],
         disp_mm=cropped_disp[idx],
-        residual_n=residual[idx]  # Can be positive or negative
+        residual_n=residual[idx]
     )
 ```
 
 **Physical interpretation:**
-- **Positive residual spikes:** Stick events (increased adhesion)
-- **Negative residual spikes:** Slip events (sudden release)
+- **Positive residual spikes:** Stick events with force above the local baseline
+- **Negative residual excursions:** Force drops below the local baseline; these are not counted as slip-stick spike events by this method
 - **Spike magnitude:** Energy dissipated per event
 - **Inter-spike interval:** Period of stick-slip cycle
 
@@ -363,10 +363,13 @@ y_filtered = filter_forward(filter_backward(y))
 
 ### Peak Detection
 
-**Local maximum criteria:**
+**Threshold excursion criteria:**
 ```
-y[i] is a peak if:
-  y[i] > y[i-1] AND y[i] > y[i+1] AND y[i] ≥ threshold
+one event is counted for each contiguous interval where:
+  residual[i] >= threshold
+
+the event marker is placed at:
+  argmax(residual) within that interval
 ```
 
 **Advantages:**

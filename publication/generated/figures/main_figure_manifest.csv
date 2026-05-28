@@ -1,0 +1,4 @@
+description,figure,panels,pdf_path,png_path
+Mean release-force heatmap generated from configuration_summary.csv,Figure 2,,figures/main/pdf/figure2_release_force_heatmap.pdf,figures/main/png/figure2_release_force_heatmap.png
+Representative residual force profiles generated from main_residual_profiles.csv,Figure 5,a:20250512_T1EN_rossella_external.csv:1_3:sharp repeated slip-stick; b:20250514_T1EN_crosil42_internal_dup1.csv:1_9:intermediate slip-stick; c:20250514_T1EN_crosil42_external.csv:1_5:stable separation,figures/main/pdf/figure5_residual_profiles.pdf,figures/main/png/figure5_residual_profiles.png
+Mean slip-stick peak-count heatmap generated from configuration_summary.csv,Figure 8,,figures/main/pdf/figure8_peak_count_heatmap.pdf,figures/main/png/figure8_peak_count_heatmap.png

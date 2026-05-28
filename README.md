@@ -26,6 +26,7 @@ This software implements a comprehensive signal processing pipeline for identify
 - [Methodology](#methodology)
 - [Concepts](#concepts)
 - [Workflow](#workflow)
+- [Publication outputs](#publication-outputs)
 - [CLI reference](#cli-options-common)
 - [Examples](#examples)
 - [Validation and testing](#validation-and-testing)
@@ -97,6 +98,31 @@ python scripts/run_all.py --slipstick-workers 2 --plot-workers 4 --max-datasets 
 
 This configuration provides 2-4x speedup over single-threaded processing while maintaining high CPU utilization.
 
+## Publication outputs
+
+The manuscript tables and supplementary release-curve figures are regenerated
+from an explicit dataset manifest:
+
+```bash
+python scripts/generate_publication_outputs.py
+```
+
+For table-only regeneration without plotting dependencies:
+
+```bash
+python scripts/generate_publication_outputs.py --tables-only
+```
+
+Inputs:
+- `publication/dataset_manifest.csv`: the 42 dataset files in the publication matrix.
+- `publication/excluded_datasets.csv`: files intentionally excluded from the matrix.
+
+Outputs are written under `publication/generated/`, including the release-force
+table, replicate-level metrics, configuration summaries, warnings, main data
+figures, supplementary release-curve figures, figure manifests, and captions. See
+`docs/PUBLICATION_OUTPUTS.md` for the exact calculation rules and inclusion
+decisions.
+
 ## Scientific context
 
 ### Background
@@ -160,7 +186,7 @@ The analysis follows a validated multi-stage pipeline:
    - Removes slow drift and specimen compliance trends
 
 6. **Spike detection**
-   - Apply peak detection to absolute residual: `scipy.signal.find_peaks`
+   - Group contiguous positive residual excursions above the detection threshold
    - Detection threshold: 1.4 cN/25 mm (configurable via `--threshold`)
    - Report peak location (time, displacement) and magnitude
    - Group nearby peaks to avoid duplicate detection
@@ -241,8 +267,8 @@ High-level pipeline (textual):
 
 7. Spike detection and residual spectral analysis
    - Spike detection (`_find_spikes`):
-     - The algorithm uses SciPy's `find_peaks` on the absolute residual (abs(residual)) with `height=threshold`.
-     - Each detected peak corresponds to a local maximum in the absolute residual that exceeds the threshold; contiguous multi-sample excursions are reported as a single peak if they contain a single local maximum.
+     - The algorithm identifies contiguous regions where the residual is at or above the positive threshold.
+     - Each threshold excursion is reported as one spike event, marked at the sample with the largest residual within that excursion.
      - The code constructs `Spike` objects (index, time_s, disp_mm, residual_n) for every found peak.
    - Residual spectrum (`_find_peak_frequency`):
      - The residual is demeaned and a periodogram is computed to obtain a power spectrum (frequencies and power).

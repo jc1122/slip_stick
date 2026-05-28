@@ -4,7 +4,7 @@ from dataclasses import replace
 from typing import Iterable, List
 
 import numpy as np
-from scipy.signal import butter, filtfilt, find_peaks, periodogram, savgol_filter
+from scipy.signal import butter, filtfilt, periodogram, savgol_filter
 
 from .models import DetectionResult, NoiseEstimate, Replicate, Spike
 
@@ -234,16 +234,24 @@ def _find_spikes(
     residual: np.ndarray,
     threshold: float,
 ) -> List[Spike]:
-    abs_residual = np.abs(residual)
-    peak_indices, properties = find_peaks(abs_residual, height=threshold)
-    if peak_indices.size == 0:
+    above_threshold = residual >= threshold
+    if not np.any(above_threshold):
         return []
 
     spikes: List[Spike] = []
-    for idx in peak_indices:
+    padded = np.concatenate(([False], above_threshold, [False]))
+    transitions = np.diff(padded.astype(int))
+    starts = np.flatnonzero(transitions == 1)
+    ends = np.flatnonzero(transitions == -1)
+
+    for start, end in zip(starts, ends):
+        segment = residual[start:end]
+        if segment.size == 0:
+            continue
+        idx = int(start + np.argmax(segment))
         spikes.append(
             Spike(
-                index=int(idx),
+                index=idx,
                 time_s=float(time[idx]),
                 disp_mm=float(disp[idx]),
                 residual_n=float(residual[idx]),

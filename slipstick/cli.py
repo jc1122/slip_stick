@@ -475,7 +475,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Detect |force-baseline| spikes above a threshold in the 50–200 mm window.",
+        description="Detect positive force-baseline residual spikes above a threshold in the 50-200 mm window.",
     )
     parser.add_argument(
         "--input", "-i", required=True, help="Path to the CSV file to analyse."

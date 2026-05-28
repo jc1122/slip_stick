@@ -6,7 +6,22 @@ date-released: 2026-05-28
 authors:
   - family-names: "Czakaj"
     given-names: "Jakub"
-    affiliation: "Almara sp. z o.o. sp.k."
+    affiliation: "Almara sp. z o.o. sp.k.; Center for Advanced Technologies, Adam Mickiewicz University in Poznan"
+  - family-names: "Kądzielawa"
+    given-names: "Edyta"
+    affiliation: "Almara sp. z o.o. sp.k.; Faculty of Infrastructure and Environment, Czestochowa University of Technology"
+  - family-names: "Sztorch"
+    given-names: "Bogna"
+    affiliation: "Center for Advanced Technologies, Adam Mickiewicz University in Poznan"
+  - family-names: "Głowacka"
+    given-names: "Julia"
+    affiliation: "Center for Advanced Technologies, Adam Mickiewicz University in Poznan"
+  - family-names: "Frydrych"
+    given-names: "Miłosz"
+    affiliation: "Center for Advanced Technologies, Adam Mickiewicz University in Poznan"
+  - family-names: "Przekop"
+    given-names: "Robert E."
+    affiliation: "Center for Advanced Technologies, Adam Mickiewicz University in Poznan"
 abstract: >-
   Supplementary data and analysis code for a manuscript on slip-stick dynamics
   in butyl pressure-sensitive adhesive and silicone release-liner systems. The

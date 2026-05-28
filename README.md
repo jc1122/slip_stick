@@ -438,31 +438,9 @@ To ensure reproducible results:
 
 ## Citation
 
-If you use this software in your research, please cite:
-
-```bibtex
-@software{slipstick2025,
-  author = {Jakub Czakaj},
-  title = {Slip-Stick Spike Detection: Automated Analysis of Tensile Test Data},
-  year = {2025},
-  version = {1.0.0},
-  url = {https://github.com/jc1122/slip_stick},
-  note = {[Add DOI when available]}
-}
-```
-
-For the associated publication, please cite:
-```bibtex
-@article{[publication_key],
-  author = {Jakub Czakaj},
-  title = {[Publication Title]},
-  journal = {[Journal Name]},
-  year = {2025},
-  doi = {[DOI]}
-}
-```
-
-See `CITATION.cff` for machine-readable citation metadata.
+If you use this software or archive in research, cite the archived release using
+the machine-readable metadata in `CITATION.cff`. Cite the associated manuscript
+separately once the article DOI is available.
 
 ## Troubleshooting
 
@@ -475,12 +453,6 @@ See `CITATION.cff` for machine-readable citation metadata.
 For additional help, please open an issue on GitHub: https://github.com/jc1122/slip_stick/issues
 
 ## Contributing & tests
-
-We welcome contributions from the research community! Please see `CONTRIBUTING.md` for guidelines on:
-- Reporting bugs and requesting features
-- Submitting code improvements
-- Adding new analysis methods
-- Improving documentation
 
 Run unit tests with the included test file:
 

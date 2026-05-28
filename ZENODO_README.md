@@ -36,8 +36,8 @@ The historical `plots/` cache is not part of the Zenodo package. It contained
 bulk exploratory/generated plots and is superseded by the canonical outputs in
 `publication/generated/` and `supplementary_material/figures/`.
 
-## Before Public Deposition
+## Citation Metadata
 
-Replace the manuscript Data Availability placeholder with the reserved Zenodo
-DOI, and add the final article DOI to repository metadata if it is already
-available at the time of deposition.
+Zenodo metadata is provided in `.zenodo.json`; citation metadata is provided in
+`CITATION.cff`. The article DOI can be added in a later archive version once it
+is available.

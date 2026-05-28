@@ -9,6 +9,8 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .pre-commit-cache/
+.venv/
+.worktrees/
 
 # Secrets & local agent config
 .codex/

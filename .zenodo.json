@@ -1,0 +1,45 @@
+{
+  "title": "Slip-Stick Dynamics in Butyl Pressure-Sensitive Adhesive-Silicone Release Liner Systems: Supplementary Data and Analysis Code",
+  "upload_type": "software",
+  "publication_date": "2026-05-28",
+  "version": "1.0.0",
+  "creators": [
+    {
+      "name": "Czakaj, Jakub",
+      "affiliation": "Almara sp. z o.o. sp.k.; Center for Advanced Technologies, Adam Mickiewicz University in Poznan"
+    },
+    {
+      "name": "Kądzielawa, Edyta",
+      "affiliation": "Almara sp. z o.o. sp.k.; Faculty of Infrastructure and Environment, Czestochowa University of Technology"
+    },
+    {
+      "name": "Sztorch, Bogna",
+      "affiliation": "Center for Advanced Technologies, Adam Mickiewicz University in Poznan"
+    },
+    {
+      "name": "Głowacka, Julia",
+      "affiliation": "Center for Advanced Technologies, Adam Mickiewicz University in Poznan"
+    },
+    {
+      "name": "Frydrych, Miłosz",
+      "affiliation": "Center for Advanced Technologies, Adam Mickiewicz University in Poznan"
+    },
+    {
+      "name": "Przekop, Robert E.",
+      "affiliation": "Center for Advanced Technologies, Adam Mickiewicz University in Poznan"
+    }
+  ],
+  "description": "FTM 10-type release-test datasets, analysis code, regenerated manuscript tables and figures, and supplementary material files for a study of slip-stick dynamics in butyl pressure-sensitive adhesive and silicone release-liner systems.",
+  "access_right": "open",
+  "license": "MIT",
+  "keywords": [
+    "slip-stick",
+    "release liner",
+    "butyl sealant",
+    "pressure-sensitive adhesive",
+    "FTM 10",
+    "peel test",
+    "silicone coating",
+    "reproducible analysis"
+  ]
+}

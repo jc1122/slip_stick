@@ -1,0 +1,8 @@
+severity,liner,sealant,side,dataset_file,message
+review,Dolpap,T2EN,inner,20250521_T2EN_dolpap_internal.csv,"valid 50-200 mm replicate count is 9, not 10"
+info,Rossella,C1E,outer,20250318_C1E_rossella_external.csv,12 traces in file; 10 have at least two samples in the 50-200 mm window
+review,Rossella,C1E,inner,20250318_C1E_rossella_internal.csv,"valid 50-200 mm replicate count is 5, not 10"
+info,Rossella,C1E,inner,20250318_C1E_rossella_internal.csv,10 traces in file; 5 have at least two samples in the 50-200 mm window
+review,Crosil 42,C1E,outer,20250331_C1E_crosil42_external.csv,"valid 50-200 mm replicate count is 11, not 10"
+info,Crosil 42,C1E,outer,20250331_C1E_crosil42_external.csv,12 traces in file; 11 have at least two samples in the 50-200 mm window
+review,Crosil 42,T2E,outer,20250409_T2E_crosil42_external.csv,"valid 50-200 mm replicate count is 11, not 10"

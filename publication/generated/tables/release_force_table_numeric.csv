@@ -1,0 +1,22 @@
+liner,sealant,inner_file,outer_file,inner_n,outer_n,inner_mean_cN_25mm,inner_sd_cN_25mm,outer_mean_cN_25mm,outer_sd_cN_25mm,inner_outer_ratio_numeric,ratio_display
+Dolpap,C1E,20250617_C1E_dolpap_internal.csv,20250617_C1E_dolpap_external.csv,10,10,5.033661,0.156575,4.869356,0.230006,1.033743,1:1
+Dolpap,U2E,20250602_U2E_dolpap_internal.csv,20250602_U2E_dolpap_external.csv,10,10,7.926349,0.728844,8.380429,1.387209,0.945817,1:1
+Dolpap,T1E,20250505_T1E_dolpap_internal.csv,20250430_T1E_dolpap_external.csv,10,10,6.012038,0.747148,5.372958,0.266092,1.118944,1:1
+Dolpap,T2E,20250507_T2E_dolpap_internal.csv,20250509_T2E_dolpap_external.csv,10,10,7.042857,0.722838,6.997192,0.337692,1.006526,1:1
+Dolpap,C1EN,20250519_C1EN_dolpap_internal.csv,20250516_C1EN_dolpap_external.csv,10,10,6.550350,1.272429,7.477067,0.471688,0.876059,1:1
+Dolpap,T1EN,20250516_T1EN_dolpap_internal.csv,20250516_T1EN_dolpap_external.csv,10,10,7.210816,1.281480,8.354726,0.878030,0.863082,1:1
+Dolpap,T2EN,20250521_T2EN_dolpap_internal.csv,20250521_T2EN_dolpap_external.csv,9,10,7.247910,0.531559,7.620482,0.902050,0.951109,1:1
+Rossella,C1E,20250318_C1E_rossella_internal.csv,20250318_C1E_rossella_external.csv,5,10,10.547502,0.536058,12.478882,1.559123,0.845228,1:1
+Rossella,U2E,20250602_U2E_rossella_internal.csv,20250602_U2E_rossella_external.csv,10,10,10.045937,0.283603,238.440515,73.869760,0.042132,1:24
+Rossella,T1E,20250417_T1E_rossella_internal.csv,20250423_T1E_rossella_external.csv,10,10,8.976990,0.832287,9.385515,0.532381,0.956473,1:1
+Rossella,T2E,20250414_T2E_rossella_internal.csv,20250416_T2E_rossella_external.csv,10,10,10.778992,1.526533,10.490578,0.813143,1.027493,1:1
+Rossella,C1EN,20250521_C1EN_rossella_internal.csv,20250521_C1EN_rossella_external.csv,10,10,15.027693,3.208866,11.705608,1.567323,1.283803,1:1
+Rossella,T1EN,20250514_T1EN_rossella_internal.csv,20250512_T1EN_rossella_external.csv,10,10,16.449651,4.783740,25.924935,9.258342,0.634511,1:2
+Rossella,T2EN,20250523_T2EN_rossella_internal.csv,20250523_T2EN_rossella_external.csv,10,10,12.869178,2.129240,11.644244,0.647774,1.105197,1:1
+Crosil 42,C1E,20250404_C1E_crosil42_internal.csv,20250331_C1E_crosil42_external.csv,10,11,3.867234,1.184819,6.365608,0.630049,0.607520,1:2
+Crosil 42,U2E,20250523_U2E_crosil42_internal.csv,20250528_U2E_crosil42_external.csv,10,10,11.608821,1.433090,17.827953,15.557659,0.651158,1:2
+Crosil 42,T1E,20250425_T1E_crosil42_internal.csv,20250428_T1E_crosil42_external.csv,10,10,4.323833,0.670416,5.338727,0.539089,0.809900,1:1
+Crosil 42,T2E,20250411_T2E_crosil42_internal.csv,20250409_T2E_crosil42_external.csv,10,11,4.569242,0.494255,8.323313,1.169585,0.548969,1:2
+Crosil 42,C1EN,20250519_C1EN_crosil42_internal.csv,20250519_C1EN_crosil42_external.csv,10,10,7.976518,2.318489,6.444595,0.809547,1.237707,1:1
+Crosil 42,T1EN,20250514_T1EN_crosil42_internal_dup1.csv,20250514_T1EN_crosil42_external.csv,10,10,10.837636,1.470708,8.449285,0.735354,1.282669,1:1
+Crosil 42,T2EN,20250523_T2EN_crosil42_internal.csv,20250523_T2EN_crosil42_external.csv,10,10,8.555909,0.452762,8.287777,0.822627,1.032353,1:1

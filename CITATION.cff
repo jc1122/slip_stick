@@ -1,19 +1,18 @@
 cff-version: 1.2.0
-message: "If you use this software in your research, please cite it as below."
-title: "Slip-Stick Spike Detection: Automated Analysis of Tensile Test Data"
+message: "If you use this archive in your research, please cite it as below."
+title: "Slip-Stick Dynamics in Butyl Pressure-Sensitive Adhesive-Silicone Release Liner Systems: Supplementary Data and Analysis Code"
 version: 1.0.0
-date-released: 2025-10-21
+date-released: 2026-05-28
 authors:
   - family-names: "Czakaj"
     given-names: "Jakub"
     affiliation: "Almara sp. z o.o. sp.k."
 abstract: >-
-  A Python package for automated detection and analysis of slip-stick phenomena
-  in tensile test data from FTM 10 testing machines. The software implements
-  instrumental noise characterization, zero-phase Butterworth filtering, and
-  Savitzky-Golay baseline correction to identify force residual spikes that
-  indicate slip-stick events. Designed for publication-quality data processing
-  with reproducible analysis pipelines and comprehensive visualization capabilities.
+  Supplementary data and analysis code for a manuscript on slip-stick dynamics
+  in butyl pressure-sensitive adhesive and silicone release-liner systems. The
+  archive contains FTM 10-type release-test datasets, the canonical generator
+  used for release-force tables and figures, generated publication outputs, and
+  supplementary material files.
 keywords:
   - slip-stick
   - tensile testing
@@ -26,14 +25,4 @@ keywords:
 license: MIT
 repository-code: "https://github.com/jc1122/slip_stick"
 url: "https://github.com/jc1122/slip_stick"
-# doi: 10.xxxx/xxxxx  # Add DOI when available
 type: software
-references:
-  - type: article
-    title: "Title of Related Publication"
-    authors:
-      - family-names: "Author"
-        given-names: "Name"
-    # journal: "Journal Name"
-    # year: 2025
-    # doi: 10.xxxx/xxxxx

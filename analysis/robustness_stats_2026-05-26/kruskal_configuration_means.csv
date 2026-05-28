@@ -1,0 +1,7 @@
+level,metric,factor,n_configurations,H,p
+configuration_mean,mean_release_cN_25mm_mean,sealant,42,10.638735818476496,0.10020431360573458
+configuration_mean,mean_release_cN_25mm_mean,liner_label,42,23.250104190784935,8.939310514663444e-06
+configuration_mean,mean_release_cN_25mm_mean,side_label,42,0.4278150806514018,0.5130630069523123
+configuration_mean,peaks_1.4cN_mean,sealant,42,2.3833983000378964,0.881282219359348
+configuration_mean,peaks_1.4cN_mean,liner_label,42,3.596144922155975,0.1656178155360597
+configuration_mean,peaks_1.4cN_mean,side_label,42,0.3210631337154119,0.5709694399644745

@@ -1,0 +1,43 @@
+figure,liner,liner_label,sealant,side,side_label,dataset_file
+1,dolpap,Dolpap,C1E,external,outer,20250617_C1E_dolpap_external.csv
+1,dolpap,Dolpap,C1E,internal,inner,20250617_C1E_dolpap_internal.csv
+2,dolpap,Dolpap,U2E,external,outer,20250602_U2E_dolpap_external.csv
+2,dolpap,Dolpap,U2E,internal,inner,20250602_U2E_dolpap_internal.csv
+3,dolpap,Dolpap,T1E,external,outer,20250430_T1E_dolpap_external.csv
+3,dolpap,Dolpap,T1E,internal,inner,20250505_T1E_dolpap_internal.csv
+4,dolpap,Dolpap,T2E,external,outer,20250509_T2E_dolpap_external.csv
+4,dolpap,Dolpap,T2E,internal,inner,20250507_T2E_dolpap_internal.csv
+5,dolpap,Dolpap,C1EN,external,outer,20250516_C1EN_dolpap_external.csv
+5,dolpap,Dolpap,C1EN,internal,inner,20250519_C1EN_dolpap_internal.csv
+6,dolpap,Dolpap,T1EN,external,outer,20250516_T1EN_dolpap_external.csv
+6,dolpap,Dolpap,T1EN,internal,inner,20250516_T1EN_dolpap_internal.csv
+7,dolpap,Dolpap,T2EN,external,outer,20250521_T2EN_dolpap_external.csv
+7,dolpap,Dolpap,T2EN,internal,inner,20250521_T2EN_dolpap_internal.csv
+8,rossella,Rossella,C1E,external,outer,20250318_C1E_rossella_external.csv
+8,rossella,Rossella,C1E,internal,inner,20250318_C1E_rossella_internal.csv
+9,rossella,Rossella,U2E,external,outer,20250602_U2E_rossella_external.csv
+9,rossella,Rossella,U2E,internal,inner,20250602_U2E_rossella_internal.csv
+10,rossella,Rossella,T1E,external,outer,20250423_T1E_rossella_external.csv
+10,rossella,Rossella,T1E,internal,inner,20250417_T1E_rossella_internal.csv
+11,rossella,Rossella,T2E,external,outer,20250416_T2E_rossella_external.csv
+11,rossella,Rossella,T2E,internal,inner,20250414_T2E_rossella_internal.csv
+12,rossella,Rossella,C1EN,external,outer,20250521_C1EN_rossella_external.csv
+12,rossella,Rossella,C1EN,internal,inner,20250521_C1EN_rossella_internal.csv
+13,rossella,Rossella,T1EN,external,outer,20250512_T1EN_rossella_external.csv
+13,rossella,Rossella,T1EN,internal,inner,20250514_T1EN_rossella_internal.csv
+14,rossella,Rossella,T2EN,external,outer,20250523_T2EN_rossella_external.csv
+14,rossella,Rossella,T2EN,internal,inner,20250523_T2EN_rossella_internal.csv
+15,crosil42,Crosil 42,C1E,external,outer,20250331_C1E_crosil42_external.csv
+15,crosil42,Crosil 42,C1E,internal,inner,20250404_C1E_crosil42_internal.csv
+16,crosil42,Crosil 42,U2E,external,outer,20250528_U2E_crosil42_external.csv
+16,crosil42,Crosil 42,U2E,internal,inner,20250523_U2E_crosil42_internal.csv
+17,crosil42,Crosil 42,T1E,external,outer,20250428_T1E_crosil42_external.csv
+17,crosil42,Crosil 42,T1E,internal,inner,20250425_T1E_crosil42_internal.csv
+18,crosil42,Crosil 42,T2E,external,outer,20250409_T2E_crosil42_external.csv
+18,crosil42,Crosil 42,T2E,internal,inner,20250411_T2E_crosil42_internal.csv
+19,crosil42,Crosil 42,C1EN,external,outer,20250519_C1EN_crosil42_external.csv
+19,crosil42,Crosil 42,C1EN,internal,inner,20250519_C1EN_crosil42_internal.csv
+20,crosil42,Crosil 42,T1EN,external,outer,20250514_T1EN_crosil42_external.csv
+20,crosil42,Crosil 42,T1EN,internal,inner,20250514_T1EN_crosil42_internal_dup1.csv
+21,crosil42,Crosil 42,T2EN,external,outer,20250523_T2EN_crosil42_external.csv
+21,crosil42,Crosil 42,T2EN,internal,inner,20250523_T2EN_crosil42_internal.csv

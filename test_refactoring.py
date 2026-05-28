@@ -22,6 +22,7 @@ from slipstick.core import (
     _compute_savgol_window,
     _compute_baseline_and_residual,
     _find_peak_frequency,
+    _find_spikes,
 )
 
 # Test plotting.py helpers (if matplotlib available)
@@ -111,6 +112,17 @@ assert power.size > 0
 assert peak_freq is not None
 assert 4.5 < peak_freq < 5.5  # Should detect ~5 Hz
 print(f"✓ Peak frequency detection: {peak_freq:.2f} Hz (expected ~5 Hz)")
+
+# Test spike detection groups contiguous positive threshold excursions into one event
+time = np.arange(9, dtype=float)
+disp = np.arange(9, dtype=float)
+residual = np.array([0.0, 2.0, 1.6, 2.4, 0.0, -1.5, -3.0, -1.6, 0.0])
+spikes = _find_spikes(time, disp, residual, threshold=1.4)
+assert [spike.index for spike in spikes] == [3]
+assert [spike.residual_n for spike in spikes] == [2.4]
+negative_only = _find_spikes(time[:4], disp[:4], np.array([0.0, -1.5, -3.0, 0.0]), threshold=1.4)
+assert negative_only == []
+print("✓ Spike detection groups positive threshold excursions as events")
 
 # Test plotting.py helpers (if matplotlib available)
 if plotting_available:

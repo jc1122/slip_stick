@@ -1,0 +1,4 @@
+panel,dataset_file,replicate,label
+a,20250512_T1EN_rossella_external.csv,1_3,sharp repeated slip-stick
+b,20250514_T1EN_crosil42_internal_dup1.csv,1_9,intermediate slip-stick
+c,20250514_T1EN_crosil42_external.csv,1_5,stable separation

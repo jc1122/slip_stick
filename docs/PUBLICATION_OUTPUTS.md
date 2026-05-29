@@ -38,7 +38,6 @@ This writes:
 - `publication/generated/tables/release_force_table.csv`
 - `publication/generated/tables/release_force_table_numeric.csv`
 - `publication/generated/tables/threshold_sensitivity_supplement.md`
-- `publication/generated/tables/threshold_sensitivity_supplement.docx`
 - `publication/generated/figures/main/png/figure2_release_force_heatmap.png`
 - `publication/generated/figures/main/png/figure5_residual_profiles.png`
 - `publication/generated/figures/main/png/figure8_peak_count_heatmap.png`

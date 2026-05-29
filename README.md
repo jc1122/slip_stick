@@ -72,29 +72,6 @@ for f in datasets/*.csv; do
 done
 ```
 
-Batch processing (optimized for performance):
-
-For efficient batch processing on multi-core systems, use the included `scripts/run_all.py` script with optimized worker counts:
-
-```bash
-# Recommended: 4 plot workers, (CPU cores)/4 slipstick workers
-# Example for 16-core system: 4 slipstick workers, 4 plot workers each
-python scripts/run_all.py --slipstick-workers 4 --plot-workers 4
-
-# Custom configuration
-python scripts/run_all.py --slipstick-workers 2 --plot-workers 4 --max-datasets 10
-```
-
-**Performance recommendations:**
-- **Plot workers**: Use 4 plot workers per slipstick job for optimal plotting performance
-- **Slipstick workers**: Use (logical CPU cores)/4 concurrent slipstick jobs for maximum CPU utilization
-- **Example configurations**:
-  - 16-core system: `--slipstick-workers 4 --plot-workers 4` (60%+ CPU utilization)
-  - 8-core system: `--slipstick-workers 2 --plot-workers 4` (45%+ CPU utilization)
-  - 4-core system: `--slipstick-workers 1 --plot-workers 4` (baseline)
-
-This configuration provides 2-4x speedup over single-threaded processing while maintaining high CPU utilization.
-
 ## Publication outputs
 
 The manuscript tables and supplementary release-curve figures are regenerated
@@ -409,8 +386,8 @@ To ensure reproducible results:
 1. **Fixed random seeds**: Not applicable (deterministic algorithms)
 2. **Version pinning**: Dependencies specified in `requirements.txt`
 3. **Platform independence**: Tested on Linux, compatible with macOS and Windows
-4. **Batch processing script**: Automated workflow in `scripts/run_all.py`
-5. **Archived outputs**: Summaries and plots stored with consistent naming
+4. **Canonical publication generator**: Automated workflow in `scripts/generate_publication_outputs.py`
+5. **Archived outputs**: Tables, summary data, and plots stored with consistent naming
 
 ## Citation
 

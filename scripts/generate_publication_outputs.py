@@ -13,9 +13,11 @@ import json
 import math
 import os
 import sys
+import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Sequence
+from xml.sax.saxutils import escape
 
 import numpy as np
 
@@ -620,7 +622,10 @@ def summary_lookup(rows: list[ConfigurationSummary]) -> dict[tuple[str, str, str
 def format_mean_sd(row: ConfigurationSummary | None) -> str:
     if row is None or not math.isfinite(row.mean_release_cN_25mm_mean):
         return ""
-    return f"{row.mean_release_cN_25mm_mean:.1f} +/- {row.mean_release_cN_25mm_sd:.1f}"
+    return (
+        f"{row.mean_release_cN_25mm_mean:.1f} ± "
+        f"{row.mean_release_cN_25mm_sd:.1f} (n={row.n_replicates})"
+    )
 
 
 def ratio_display(inner: ConfigurationSummary | None, outer: ConfigurationSummary | None) -> str:
@@ -653,33 +658,43 @@ def markdown_table(headers: list[str], rows: list[list[str]]) -> str:
 
 def write_release_tables(output_dir: Path, summaries: list[ConfigurationSummary]) -> None:
     lookup = summary_lookup(summaries)
-    table_rows: list[list[str]] = []
+    release_rows: list[list[str]] = []
+    ratio_rows: list[list[str]] = []
     numeric_rows: list[dict[str, object]] = []
+    ratio_numeric_rows: list[dict[str, object]] = []
 
     for liner in LINER_ORDER:
         liner_label = next(row.liner_label for row in summaries if row.liner == liner)
         for side in TABLE_SIDE_ORDER:
             side_label = "inner" if side == "internal" else "outer"
-            table_rows.append(
+            release_rows.append(
                 [liner_label, side_label]
                 + [
                     format_mean_sd(lookup.get((liner, sealant, side)))
                     for sealant in SEALANT_ORDER
                 ]
             )
-        ratio_row = [liner_label, "force ratio (inner : outer)"]
-        for sealant in SEALANT_ORDER:
-            ratio_row.append(
+
+        ratio_rows.append(
+            [liner_label, "inner:outer"]
+            + [
                 ratio_display(
                     lookup.get((liner, sealant, "internal")),
                     lookup.get((liner, sealant, "external")),
                 )
-            )
-        table_rows.append(ratio_row)
+                for sealant in SEALANT_ORDER
+            ]
+        )
 
         for sealant in SEALANT_ORDER:
             inner = lookup[(liner, sealant, "internal")]
             outer = lookup[(liner, sealant, "external")]
+            ratio_numeric = (
+                inner.mean_release_cN_25mm_mean / outer.mean_release_cN_25mm_mean
+                if outer.mean_release_cN_25mm_mean > 0
+                else math.nan
+            )
+            ratio_text = ratio_display(inner, outer)
             numeric_rows.append(
                 {
                     "liner": liner_label,
@@ -696,17 +711,32 @@ def write_release_tables(output_dir: Path, summaries: list[ConfigurationSummary]
                         outer.mean_release_cN_25mm_mean, 6
                     ),
                     "outer_sd_cN_25mm": finite_or_blank(outer.mean_release_cN_25mm_sd, 6),
-                    "inner_outer_ratio_numeric": finite_or_blank(
-                        inner.mean_release_cN_25mm_mean / outer.mean_release_cN_25mm_mean,
-                        6,
-                    )
-                    if outer.mean_release_cN_25mm_mean > 0
-                    else "",
-                    "ratio_display": ratio_display(inner, outer),
+                    "inner_outer_ratio_numeric": finite_or_blank(ratio_numeric, 6),
+                    "ratio_display": ratio_text,
+                }
+            )
+            ratio_numeric_rows.append(
+                {
+                    "liner": liner_label,
+                    "sealant": sealant,
+                    "ratio_convention": "inner:outer",
+                    "inner_file": inner.dataset_file,
+                    "outer_file": outer.dataset_file,
+                    "inner_n": inner.n_replicates,
+                    "outer_n": outer.n_replicates,
+                    "inner_mean_cN_25mm": finite_or_blank(
+                        inner.mean_release_cN_25mm_mean, 6
+                    ),
+                    "outer_mean_cN_25mm": finite_or_blank(
+                        outer.mean_release_cN_25mm_mean, 6
+                    ),
+                    "inner_outer_ratio_numeric": finite_or_blank(ratio_numeric, 6),
+                    "inner_outer_ratio_display": ratio_text,
                 }
             )
 
     headers = ["Liner", "Side"] + SEALANT_ORDER
+    ratio_headers = ["Liner", "Ratio convention"] + SEALANT_ORDER
     tables_dir = output_dir / "tables"
     tables_dir.mkdir(parents=True, exist_ok=True)
     (tables_dir / "release_force_table.md").write_text(
@@ -714,10 +744,11 @@ def write_release_tables(output_dir: Path, summaries: list[ConfigurationSummary]
             [
                 "# Release-Force Table",
                 "",
-                f"Values are mean +/- sample SD in {FORCE_UNIT}.",
+                f"Values are mean ± sample SD (n=valid replicates) in {FORCE_UNIT}.",
                 "The calculation uses per-replicate mean force over 50-200 mm.",
+                "Force ratios are reported separately in `force_ratio_inner_outer_table.md`.",
                 "",
-                markdown_table(headers, table_rows),
+                markdown_table(headers, release_rows),
                 "",
             ]
         ),
@@ -729,7 +760,7 @@ def write_release_tables(output_dir: Path, summaries: list[ConfigurationSummary]
     ) as handle:
         writer = csv.writer(handle, **CSV_WRITE_KWARGS)
         writer.writerow(headers)
-        writer.writerows(table_rows)
+        writer.writerows(release_rows)
 
     numeric_path = tables_dir / "release_force_table_numeric.csv"
     with numeric_path.open("w", newline="", encoding="utf-8") as handle:
@@ -737,6 +768,36 @@ def write_release_tables(output_dir: Path, summaries: list[ConfigurationSummary]
         writer = csv.DictWriter(handle, fieldnames=fieldnames, **CSV_WRITE_KWARGS)
         writer.writeheader()
         writer.writerows(numeric_rows)
+
+    (tables_dir / "force_ratio_inner_outer_table.md").write_text(
+        "\n".join(
+            [
+                "# Force-Ratio Table (inner:outer)",
+                "",
+                "Ratio convention: inner:outer = inner-side mean release force divided by outer-side mean release force.",
+                "Ratios are computed from unrounded configuration means in `release_force_table_numeric.csv` and displayed as the nearest integer inner:outer ratio; near-unity ratios are shown as 1:1.",
+                "",
+                markdown_table(ratio_headers, ratio_rows),
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    with (tables_dir / "force_ratio_inner_outer_table.csv").open(
+        "w", newline="", encoding="utf-8"
+    ) as handle:
+        writer = csv.writer(handle, **CSV_WRITE_KWARGS)
+        writer.writerow(ratio_headers)
+        writer.writerows(ratio_rows)
+
+    with (tables_dir / "force_ratio_inner_outer_table_numeric.csv").open(
+        "w", newline="", encoding="utf-8"
+    ) as handle:
+        fieldnames = list(ratio_numeric_rows[0].keys())
+        writer = csv.DictWriter(handle, fieldnames=fieldnames, **CSV_WRITE_KWARGS)
+        writer.writeheader()
+        writer.writerows(ratio_numeric_rows)
 
 
 def write_warnings(output_dir: Path, summaries: list[ConfigurationSummary]) -> None:
@@ -1313,6 +1374,236 @@ def write_threshold_supplement_markdown(
 
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(lines), encoding="utf-8")
+
+
+def docx_paragraph(text: str, *, style: str | None = None) -> str:
+    style_xml = f'<w:pPr><w:pStyle w:val="{style}"/></w:pPr>' if style else ""
+    return f"<w:p>{style_xml}<w:r><w:t>{escape(text)}</w:t></w:r></w:p>"
+
+
+def docx_table(headers: Sequence[str], rows: Sequence[Sequence[object]]) -> str:
+    def cell(value: object) -> str:
+        return (
+            "<w:tc><w:tcPr><w:tcW w:w=\"0\" w:type=\"auto\"/></w:tcPr>"
+            f"<w:p><w:r><w:t>{escape(str(value))}</w:t></w:r></w:p></w:tc>"
+        )
+
+    table_rows = [
+        "<w:tr>" + "".join(cell(header) for header in headers) + "</w:tr>"
+    ]
+    for row in rows:
+        table_rows.append("<w:tr>" + "".join(cell(value) for value in row) + "</w:tr>")
+    return (
+        "<w:tbl><w:tblPr><w:tblBorders>"
+        '<w:top w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
+        '<w:left w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
+        '<w:bottom w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
+        '<w:right w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
+        '<w:insideH w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
+        '<w:insideV w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
+        "</w:tblBorders></w:tblPr>"
+        + "".join(table_rows)
+        + "</w:tbl>"
+    )
+
+
+def write_minimal_docx(path: Path, body_xml: str) -> None:
+    content_types = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+  <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
+</Types>"""
+    rels = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>"""
+    styles = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style>
+  <w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/><w:pPr><w:keepNext/></w:pPr><w:rPr><w:b/><w:sz w:val="32"/></w:rPr></w:style>
+  <w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/><w:basedOn w:val="Normal"/><w:pPr><w:keepNext/></w:pPr><w:rPr><w:b/><w:sz w:val="28"/></w:rPr></w:style>
+  <w:style w:type="paragraph" w:styleId="Heading3"><w:name w:val="heading 3"/><w:basedOn w:val="Normal"/><w:pPr><w:keepNext/></w:pPr><w:rPr><w:b/><w:sz w:val="24"/></w:rPr></w:style>
+</w:styles>"""
+    document = f"""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    {body_xml}
+    <w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"/></w:sectPr>
+  </w:body>
+</w:document>"""
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("[Content_Types].xml", content_types)
+        archive.writestr("_rels/.rels", rels)
+        archive.writestr("word/document.xml", document)
+        archive.writestr("word/styles.xml", styles)
+
+
+def write_threshold_supplement_docx(
+    path: Path,
+    *,
+    threshold_rows: list[dict[str, object]],
+    noise_summary: dict[str, object],
+    top_configs: list[dict[str, object]],
+) -> None:
+    default_threshold = float(noise_summary["default_threshold_cN"])
+    threshold_lookup = {float(row["threshold_cN"]): row for row in threshold_rows}
+    low_row = threshold_lookup.get(1.0)
+    high_row = threshold_lookup.get(2.0)
+    stability_sentence = ""
+    if low_row is not None and high_row is not None:
+        stability_sentence = (
+            " The configuration-level rankings remained strongly correlated with "
+            "the default analysis at 1.0 cN/25 mm "
+            f"(rho = {float(low_row['spearman_rho_vs_default']):.3f}) and "
+            "2.0 cN/25 mm "
+            f"(rho = {float(high_row['spearman_rho_vs_default']):.3f})."
+        )
+
+    body_parts = [
+        docx_paragraph("Supplementary Methodological Background", style="Heading1"),
+        docx_paragraph("Threshold Robustness of Slip-Stick Peak Detection", style="Heading2"),
+        docx_paragraph(
+            "This supplementary note supports the operational residual-force "
+            f"threshold of {default_threshold:.1f} cN/25 mm used for slip-stick "
+            "peak detection. The threshold is not treated as a universal material "
+            "constant; it is a reproducible detection criterion applied to all "
+            "traces in the manuscript matrix."
+        ),
+        docx_paragraph(
+            "The values below are generated by "
+            "`python scripts/generate_publication_outputs.py` from the publication "
+            "dataset manifest."
+        ),
+        docx_paragraph("S1. Dataset Scope", style="Heading3"),
+        docx_paragraph(f"Replicate traces: {int(noise_summary['replicate_traces'])}"),
+        docx_paragraph(
+            "Liner-sealant-side configurations: "
+            f"{int(noise_summary['configurations'])}"
+        ),
+        docx_paragraph("Analysis window: 50-200 mm displacement."),
+        docx_paragraph("Force normalization: cN/25 mm from the 90 mm collection width."),
+        docx_paragraph(
+            "Peak definition: one contiguous positive residual excursion above "
+            "the threshold is counted as one event."
+        ),
+        docx_paragraph("S2. Noise Margin", style="Heading3"),
+        docx_table(
+            ["Metric", "Value"],
+            [
+                (
+                    "Median baseline noise SD",
+                    f"{float(noise_summary['median_noise_std_cN_25mm']):.3f} cN/25 mm",
+                ),
+                (
+                    "95th percentile baseline noise SD",
+                    f"{float(noise_summary['p95_noise_std_cN_25mm']):.3f} cN/25 mm",
+                ),
+                (
+                    "Maximum baseline noise SD",
+                    f"{float(noise_summary['max_noise_std_cN_25mm']):.3f} cN/25 mm",
+                ),
+                (
+                    "Threshold / median noise SD",
+                    f"{float(noise_summary['threshold_to_median_noise_std_ratio']):.1f}x",
+                ),
+                (
+                    "Threshold / 95th percentile noise SD",
+                    f"{float(noise_summary['threshold_to_p95_noise_std_ratio']):.1f}x",
+                ),
+            ],
+        ),
+        docx_paragraph(
+            f"The {default_threshold:.1f} cN/25 mm threshold is therefore well "
+            "above the measured baseline noise floor."
+        ),
+        docx_paragraph("S3. Threshold Sensitivity", style="Heading3"),
+        docx_paragraph(
+            "Peak counts were recalculated at nearby residual-force thresholds. "
+            "Spearman rho was computed across configuration-level mean peak "
+            f"counts relative to the default {default_threshold:.1f} cN/25 mm "
+            "threshold."
+        ),
+        docx_table(
+            [
+                "Threshold [cN/25 mm]",
+                "Spearman rho vs default",
+                "p value",
+                "Total peaks",
+                "Configs mean >= 1 peak",
+                "Configs mean >= 5 peaks",
+            ],
+            [
+                (
+                    f"{float(row['threshold_cN']):.1f}",
+                    f"{float(row['spearman_rho_vs_default']):.3f}",
+                    (
+                        "reference"
+                        if math.isclose(float(row["threshold_cN"]), default_threshold)
+                        else p_value_display(row["spearman_p_value"])
+                    ),
+                    int(row["total_peaks"]),
+                    int(row["configurations_mean_ge_1_peak"]),
+                    int(row["configurations_mean_ge_5_peaks"]),
+                )
+                for row in threshold_rows
+            ],
+        ),
+        docx_paragraph(
+            "The absolute number of detected peaks decreases as the threshold "
+            "increases, as expected."
+            + stability_sentence
+        ),
+        docx_paragraph(
+            "This supports using 1.4 cN/25 mm as an operational threshold rather "
+            "than indicating that the slip-stick ranking depends on a single "
+            "arbitrary value."
+        ),
+        docx_paragraph("S4. Highest Peak-Count Configurations", style="Heading3"),
+        docx_table(
+            [
+                "Sealant",
+                "Liner",
+                "Side",
+                "n",
+                "Mean peaks 1.0",
+                "Mean peaks 1.4",
+                "Mean peaks 2.0",
+                "Mean force [cN/25 mm]",
+                "Median noise SD",
+            ],
+            [
+                (
+                    row["sealant"],
+                    row["liner_label"],
+                    row["side_label"],
+                    int(row["n_replicates"]),
+                    f"{float(row['peak_count_1cN_mean']):.1f}",
+                    f"{float(row['peak_count_1p4cN_mean']):.1f}",
+                    f"{float(row['peak_count_2cN_mean']):.1f}",
+                    f"{float(row['mean_release_cN_25mm_mean']):.1f}",
+                    f"{float(row['noise_std_cN_25mm_median']):.3f}",
+                )
+                for row in top_configs
+            ],
+        ),
+        docx_paragraph(
+            "High peak count should not be read as identical to high mean release "
+            "force. It describes instability of the residual force trace after "
+            "baseline correction."
+        ),
+        docx_paragraph("S5. Machine-Readable Data", style="Heading3"),
+        docx_paragraph("publication/generated/data/threshold_noise_summary.csv"),
+        docx_paragraph("publication/generated/data/threshold_robustness.csv"),
+        docx_paragraph("publication/generated/data/top_peak_configs.csv"),
+        docx_paragraph("publication/generated/data/threshold_robustness_summary.json"),
+        docx_paragraph("publication/generated/data/configuration_summary.csv"),
+        docx_paragraph("publication/generated/data/replicate_metrics.csv"),
+    ]
+    write_minimal_docx(path, "\n".join(body_parts))
 
 
 def require_matplotlib():
@@ -2605,6 +2896,12 @@ def main(argv: Iterable[str] | None = None) -> int:
         )
         write_threshold_supplement_markdown(
             args.output_dir / "tables" / "threshold_sensitivity_supplement.md",
+            threshold_rows=threshold_rows,
+            noise_summary=noise_summary,
+            top_configs=top_configs,
+        )
+        write_threshold_supplement_docx(
+            args.output_dir / "tables" / "threshold_sensitivity_supplement.docx",
             threshold_rows=threshold_rows,
             noise_summary=noise_summary,
             top_configs=top_configs,

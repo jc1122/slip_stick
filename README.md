@@ -392,8 +392,10 @@ To ensure reproducible results:
 ## Citation
 
 If you use this software or archive in research, cite the archived release using
-the machine-readable metadata in `CITATION.cff`. Cite the associated manuscript
-separately once the article DOI is available.
+the machine-readable metadata in `CITATION.cff`. No DOI is embedded in this
+staging copy before Zenodo deposition; once Zenodo assigns the archive DOI, add
+that DOI to `CITATION.cff` and use it for citations. Cite the associated
+manuscript separately once the article DOI is available.
 
 ## Troubleshooting
 

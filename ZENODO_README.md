@@ -42,5 +42,7 @@ paper repository, not in this Zenodo data/code archive.
 ## Citation Metadata
 
 Zenodo metadata is provided in `.zenodo.json`; citation metadata is provided in
-`CITATION.cff`. The article DOI can be added in a later archive version once it
-is available.
+`CITATION.cff`. No DOI is embedded in this staging copy before deposition. After
+Zenodo assigns the archive DOI, add it to `CITATION.cff` and update the README
+citation text. The article DOI can be added separately in a later archive
+version once it is available.

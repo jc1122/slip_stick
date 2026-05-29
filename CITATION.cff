@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use this software in your research, please cite it as below."
-title: "Slip-Stick Spike Detection: Automated Analysis of Tensile Test Data"
+title: "Slip-Stick Spike Detection for Modified FINAT FTM 10-Type Release-Liner Peel Data"
 version: 1.0.0
 date-released: 2025-10-21
 authors:
@@ -23,20 +23,19 @@ authors:
     given-names: "Robert E."
     affiliation: "Center for Advanced Technologies, Adam Mickiewicz University in Poznan"
 abstract: >-
-  A Python package for automated detection and analysis of slip-stick phenomena
-  in tensile test data from FTM 10 testing machines. The software implements
-  instrumental noise characterization, zero-phase Butterworth filtering, and
-  Savitzky-Golay baseline correction to identify force residual spikes that
-  indicate slip-stick events. Designed for publication-quality data processing
-  with reproducible analysis pipelines and comprehensive visualization capabilities.
+  Python code for detecting slip-stick force peaks in release-liner peel data
+  from a modified FINAT FTM 10-type 180 degree integration test. The package
+  applies instrumental-noise characterization, zero-phase Butterworth filtering,
+  and Savitzky-Golay baseline correction to identify positive residual-force
+  excursions above the configured threshold.
 keywords:
   - slip-stick
-  - tensile testing
+  - release liner
   - signal processing
   - materials science
   - friction
   - adhesion
-  - FTM 10
+  - modified FINAT FTM 10
   - Python
 license: MIT
 repository-code: "https://github.com/jc1122/slip_stick"

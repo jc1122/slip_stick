@@ -1,0 +1,8 @@
+sample,mooney_ml_mean_MU,mooney_ml_sd_MU,mooney_max_mean_MU,mooney_max_sd_MU,max_ml_ratio_mean,max_ml_ratio_sd,penetration_mean_0p1mm,penetration_sd_0p1mm,density_mean_g_cm3,density_sd_g_cm3,mvr_mean_cm3_10min,mvr_sd_cm3_10min,peel_force_mean_N_25mm,peel_force_sd_N_25mm,failure_mode,quantitative_n_except_peel,peel_force_n
+C1E,53,2,54,2,1.02,0.05,59,2,1.70,0.01,87,11,57,4,A/CPET,3,10
+U2E,21,2,53,3,2.52,0.28,70,3,1.20,0.01,148,30,132,13,C,3,10
+C1EN,17,2,38,2,2.24,0.29,58,2,1.52,0.01,51,17,34,3,A/CPET,3,10
+T1E,36,2,62,3,1.72,0.13,53,2,1.42,0.01,48,4,87,13,A/CPET,3,10
+T2E,29,2,47,3,1.62,0.15,56,2,1.44,0.01,53,7,84,11,A/CPET,3,10
+T1EN,24,2,64,11,2.66,0.43,58,3,1.42,0.01,42,12,39,7,ASt,3,10
+T2EN,25,2,78,7,3.08,0.17,62,2,1.43,0.01,31,9,47,15,ASt,3,10

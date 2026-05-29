@@ -63,8 +63,9 @@ force_scaled = force_n * (report_width_mm / collection_width_mm)
    - Prevents contamination from early specimen contact
 
 3. **Baseline fitting:**
-   - Long-window Savitzky-Golay filter (polynomial order 3)
-   - Window length: 50% of noise sample duration (minimum 2 s)
+   - Long-window Savitzky-Golay filter (polynomial order 2)
+   - Window length: approximately 50% of the selected displacement span
+   - Edge handling: `mode="interp"` in the noise-estimation path
    - Removes slow drift and DC offset
 
 4. **Residual calculation:**
@@ -163,11 +164,13 @@ class NoiseEstimate:
 
 4. **Zero-phase application:**
    ```python
-   filtered_force = filtfilt(b, a, force_n, method='gust')
+   filtered_force = filtfilt(b, a, force_n)
    ```
 
 5. **Padding check:**
-   - `filtfilt` requires `3 × filter_order` samples
+   - The implementation uses SciPy's default `filtfilt` padding method
+   - A replicate is filtered only when its length exceeds
+     `3 * max(len(a), len(b))`
    - Skip filtering if insufficient samples
 
 **Physical interpretation:**
@@ -233,7 +236,7 @@ baseline = savgol_filter(
     cropped_force,
     window_length=window_length,
     polyorder=3,
-    mode='interp'  # Extrapolate at edges
+    mode='mirror'
 )
 ```
 
@@ -241,6 +244,11 @@ baseline = savgol_filter(
 ```python
 residual = cropped_force - baseline
 ```
+
+**Implementation note:**
+- The main 50-200 mm baseline uses `mode="mirror"` for edge handling.
+- The shorter instrumental-noise baseline uses `mode="interp"` because it is
+  fitted on a pre-test segment and is used only for noise characterization.
 
 **Physical interpretation:**
 - Long window (tens of seconds) averages out short spikes
@@ -300,7 +308,7 @@ for idx in event_indices:
    freqs, power = periodogram(
        residual_centered,
        fs=sample_rate_hz,
-       scaling='density'
+       scaling='spectrum'
    )
    ```
 
@@ -440,10 +448,10 @@ the event marker is placed at:
 
 - **Data loading:** O(n) where n = file size
 - **Noise estimation:** O(m) where m = noise window samples
-- **Filtering:** O(n log n) due to FFT in `filtfilt`
+- **Filtering:** O(n) for the applied IIR forward-backward filter
 - **Baseline fitting:** O(n) for Savitzky-Golay
 - **Spike detection:** O(n) for peak finding
-- **Overall:** O(n log n) per replicate
+- **Overall:** O(n) per replicate for the implemented processing path
 
 ### Memory Usage
 
@@ -486,27 +494,25 @@ the event marker is placed at:
 ```python
 from slipstick.io import load_replicates
 from slipstick.core import estimate_instrumental_noise, _analyse_replicate
-from slipstick.models import CliConfig
+from slipstick.core import process_replicates
 
 # Load data
 replicates = load_replicates("data.csv")
 
-# Configure analysis
-config = CliConfig(
-    collection_width_mm=90.0,
-    report_width_mm=25.0,
-    force_scale=25.0/90.0,
-    disp_min=50.0,
-    disp_max=200.0,
-    threshold_n=0.0504,  # 1.4 cN/25 mm
-    # ... other parameters
+# Scale force from 90 mm collection width to 25 mm reporting width
+processed = process_replicates(
+    replicates,
+    force_scale=25.0 / 90.0,
+    cutoff_hz=None,
 )
 
 # Analyze first replicate
 result = _analyse_replicate(
-    replicate=replicates[0],
-    config=config,
-    sample_rate_hz=100.0
+    replicate=processed[0],
+    displacement_window=(50.0, 200.0),
+    window_seconds=None,
+    polyorder=3,
+    threshold=0.0504,  # 1.4 cN/25 mm at 90 mm collection width
 )
 
 # Access results
@@ -523,8 +529,11 @@ import numpy as np
 # Estimate noise
 noise_est = estimate_instrumental_noise(
     replicate=replicate,
-    noise_disp_min=1.0,
-    noise_disp_max=5.0
+    disp_min=1.0,
+    disp_max=5.0,
+    force_abs_max=None,
+    min_samples=10,
+    force_onset=None,
 )
 
 # Set threshold as 10× noise floor
@@ -532,6 +541,11 @@ threshold = 10 * noise_est.std_n
 print(f"Adaptive threshold: {threshold:.4f} N")
 
 # Use in analysis
-config.threshold_n = threshold
-result = _analyse_replicate(replicate, config, sample_rate_hz)
+result = _analyse_replicate(
+    replicate=replicate,
+    displacement_window=(50.0, 200.0),
+    window_seconds=None,
+    polyorder=3,
+    threshold=threshold,
+)
 ```

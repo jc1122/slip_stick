@@ -1,6 +1,6 @@
-# Exact submitted-output environment.
-# Install this file before running scripts/verify_publication_outputs.py.
+# Locked environment used to regenerate the submitted publication outputs.
 # Python: 3.14.4
+# requirements.txt mirrors this lock file for reviewer-facing installs.
 contourpy==1.3.3
 cycler==0.12.1
 fonttools==4.63.0

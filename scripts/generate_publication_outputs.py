@@ -15,6 +15,7 @@ import os
 import sys
 import zipfile
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable, Sequence
 from xml.sax.saxutils import escape
@@ -52,6 +53,12 @@ NORMAL_RELEASE_Y_MIN_CN = 0.0
 NORMAL_RELEASE_Y_MAX_CN = 30.0
 SEVERE_RELEASE_ABOVE_NORMAL_FRACTION = 0.05
 DEFAULT_THRESHOLD_SENSITIVITY_CN = [0.5, 1.0, 1.4, 2.0, 3.0]
+PDF_METADATA = {
+    "Creator": "slipstick publication generator",
+    "Producer": "Matplotlib",
+    "CreationDate": datetime(2026, 5, 29, tzinfo=timezone.utc),
+    "ModDate": datetime(2026, 5, 29, tzinfo=timezone.utc),
+}
 
 
 @dataclass(frozen=True)
@@ -1634,10 +1641,19 @@ def save_figure(
     for suffix in image_formats:
         out_path = output_dir / "figures" / subdir / suffix / f"{stem}.{suffix}"
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        save_kwargs = {"dpi": dpi} if suffix.lower() in {"png", "jpg", "jpeg"} else {}
+        save_kwargs = figure_save_kwargs(suffix, dpi=dpi)
         fig.savefig(out_path, **save_kwargs)
         paths[f"{suffix}_path"] = str(out_path.relative_to(output_dir))
     return paths
+
+
+def figure_save_kwargs(suffix: str, *, dpi: int) -> dict[str, object]:
+    lower = suffix.lower()
+    if lower in {"png", "jpg", "jpeg"}:
+        return {"dpi": dpi}
+    if lower == "pdf":
+        return {"metadata": PDF_METADATA}
+    return {}
 
 
 def set_main_plot_style(plt) -> None:
@@ -2552,7 +2568,7 @@ def plot_figure(
     for suffix in image_formats:
         out_path = output_dir / "figures" / "release_curves" / suffix / f"{stem}.{suffix}"
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        save_kwargs = {"dpi": dpi} if suffix.lower() in {"png", "jpg", "jpeg"} else {}
+        save_kwargs = figure_save_kwargs(suffix, dpi=dpi)
         fig.savefig(out_path, **save_kwargs)
         paths[suffix] = str(out_path.relative_to(output_dir))
     plt.close(fig)

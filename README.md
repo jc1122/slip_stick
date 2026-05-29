@@ -1,9 +1,11 @@
 # Slip-Stick Spike Detection
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![Exact reproduction: Python 3.14.4](https://img.shields.io/badge/exact_reproduction-Python_3.14.4-blue.svg)](https://www.python.org/downloads/)
 
-A Python package for automated detection and analysis of slip-stick phenomena in tensile test data from FTM 10 testing machines.
+A Python package for detecting slip-stick force peaks in release-liner peel data
+from a modified FINAT FTM 10-type integration test. The publication dataset was
+collected with a 180° peel geometry on a Shimadzu universal testing machine.
 
 ## Abstract
 
@@ -39,18 +41,27 @@ This software implements a comprehensive signal processing pipeline for identify
 
 ## Installation
 
-Install required packages:
+For exact regeneration of the publication outputs, use the locked environment:
 
 ```bash
-pip install numpy scipy
+python -m venv .venv
+. .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+python scripts/verify_publication_outputs.py
 ```
 
-Optional plotting support:
+`requirements.txt` and `requirements-lock.txt` record the exact package
+versions used for the submitted tables and figures with Python 3.14.4. The
+verification script fails before regeneration if Python, NumPy, SciPy, or
+Matplotlib do not match the submitted-output lock. This avoids silently
+regenerating environment-dependent spike-count values.
+
+A containerized verification path is also provided:
 
 ```bash
-pip install matplotlib
-# optional: faster vector graphics
-pip install mplcairo
+docker build -t slipstick-publication .
+docker run --rm slipstick-publication
 ```
 
 ## Quick start
@@ -115,6 +126,11 @@ python scripts/generate_publication_outputs.py --tables-only
 
 Inputs:
 - `publication/dataset_manifest.csv`: the 42 dataset files in the publication matrix.
+- `publication/source_data/`: processed source values for manuscript Tables 1
+  and 2, covering material-property and water-contact-angle values that are not
+  derived from the force-displacement CSV datasets. Table 1 is a processed
+  summary from non-public Almara production/QC records; Table 2 includes the
+  five canonicalized contact-angle measurements extracted from `gonio.xls`.
 
 Outputs are written under `publication/generated/`, including the release-force
 table, replicate-level metrics, configuration summaries, warnings, main data
@@ -130,10 +146,11 @@ Slip-stick friction is a phenomenon observed in adhesive systems where periodic 
 
 ### Application
 
-This software was developed to systematically analyze adhesion test data from:
-- **Materials**: Polymer films with various surface treatments and coatings
-- **Test conditions**: 90° peel tests at constant displacement rate
-- **Instrument**: FTM 10 tensile testing machine (multi-replicate capability)
+This software was developed to analyze release-liner data from the manuscript
+dataset:
+- **Materials**: Butyl sealant compounds separated from release liners
+- **Test conditions**: Modified FINAT FTM 10-type 180° peel integration tests at 300 mm/min
+- **Instrument**: Shimadzu EZ Test EZ-LX universal testing machine with a 1 kN load cell
 - **Specimen geometry**: 90 mm width specimens, results normalized to 25 mm for reporting
 
 The automated detection approach enables:
@@ -431,23 +448,43 @@ The software has been validated on the 42 publication datasets comprising:
 
 To ensure reproducible results:
 1. **Fixed random seeds**: Not applicable (deterministic algorithms)
-2. **Version pinning**: Dependencies specified in `requirements.txt`
-3. **Platform independence**: Tested on Linux, compatible with macOS and Windows
-4. **Batch processing script**: Automated workflow in `scripts/run_all.py`
-5. **Archived outputs**: Summaries and plots stored with consistent naming
+2. **Version pinning**: Exact submitted-output dependencies are specified in
+   `requirements.txt` and mirrored in `requirements-lock.txt`.
+3. **Platform note**: The locked environment was verified on Linux with Python 3.14.4.
+4. **Canonical publication generator**: Automated workflow in `scripts/generate_publication_outputs.py`
+5. **Archived outputs**: Tables, summary data, and plots stored with consistent naming
+
+Run the verification script after installation:
+
+```bash
+python scripts/verify_publication_outputs.py
+```
+
+The script regenerates the tabular publication outputs in a temporary directory
+and compares them with the archived files. It first checks the submitted-output
+environment lock and then checks sentinel values that were sensitive in reviewer
+testing: Rossella/C1E outer mean peak count = 4.300000, Rossella/C1E outer
+peak-count sum = 43, and the 1.4 cN/25 mm threshold total peak count = 904.
+The file `verification_report_2026-05-29.txt` records a passing run in the
+locked environment.
 
 ## Citation
 
 If you use this software or archive in research, cite the archived release using
-the machine-readable metadata in `CITATION.cff`. Cite the associated manuscript
-separately once the article DOI is available.
+the machine-readable metadata in `CITATION.cff`.
+
+Dataset/code archive DOI: https://doi.org/10.5281/zenodo.20448892
+
+Cite the associated manuscript separately once the article DOI is available.
 
 ## Troubleshooting
 
 - "No replicates found": verify the file has three header rows and column triples in time/force/displacement order.
 - Incorrect numeric parsing: check decimal separators and file encoding; the loader defaults to `cp1250` and supports comma decimals.
 - No spikes detected: try lowering the `--threshold` or verify the analysis displacement window covers the region of interest.
-- Installation issues: Ensure Python 3.11+ is installed. Use virtual environments to avoid dependency conflicts.
+- Installation issues: use Python 3.14.4 and `requirements.txt` for exact
+  publication-output reproduction. Other Python versions may run the package but
+  are not the submitted reproduction target.
 - Performance problems: Reduce `--plot-workers` if memory is limited. Use `--max-datasets` to process subsets.
 
 For additional help, please open an issue on GitHub: https://github.com/jc1122/slip_stick/issues

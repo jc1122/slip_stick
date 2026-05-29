@@ -1,5 +1,5 @@
 {
-  "title": "Slip-Stick Dynamics in Butyl Pressure-Sensitive Adhesive-Silicone Release Liner Systems: Supplementary Data and Analysis Code",
+  "title": "Slip-Stick Dynamics in Butyl Pressure-Sensitive Adhesive-Silicone Release Liner Systems: Data and Analysis Code",
   "upload_type": "dataset",
   "publication_date": "2026-05-28",
   "version": "1.0.0",
@@ -29,7 +29,7 @@
       "affiliation": "Center for Advanced Technologies, Adam Mickiewicz University in Poznan"
     }
   ],
-  "description": "FTM 10-type release-test datasets, analysis code, regenerated manuscript tables and figures, and supplementary material files for a study of slip-stick dynamics in butyl pressure-sensitive adhesive and silicone release-liner systems.",
+  "description": "FTM 10-type release-test datasets, analysis code, and regenerated manuscript tables and figures for a study of slip-stick dynamics in butyl pressure-sensitive adhesive and silicone release-liner systems.",
   "access_right": "open",
   "license": "cc-by-4.0",
   "keywords": [

@@ -3,6 +3,9 @@ plots/
 noise_plots/
 summaries/
 
+# Manuscript-only source assets live in the paper repository.
+publication/assets/
+
 # Runtime caches
 __pycache__/
 *.pyc

@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use this archive in your research, please cite it as below."
-title: "Slip-Stick Dynamics in Butyl Pressure-Sensitive Adhesive-Silicone Release Liner Systems: Supplementary Data and Analysis Code"
+title: "Slip-Stick Dynamics in Butyl Pressure-Sensitive Adhesive-Silicone Release Liner Systems: Data and Analysis Code"
 version: 1.0.0
 date-released: 2026-05-28
 authors:
@@ -23,11 +23,10 @@ authors:
     given-names: "Robert E."
     affiliation: "Center for Advanced Technologies, Adam Mickiewicz University in Poznan"
 abstract: >-
-  Supplementary data and analysis code for a manuscript on slip-stick dynamics
-  in butyl pressure-sensitive adhesive and silicone release-liner systems. The
-  archive contains FTM 10-type release-test datasets, the canonical generator
-  used for release-force tables and figures, generated publication outputs, and
-  supplementary material files.
+  Data and analysis code for a manuscript on slip-stick dynamics in butyl
+  pressure-sensitive adhesive and silicone release-liner systems. The archive
+  contains FTM 10-type release-test datasets, the canonical generator used for
+  release-force tables and figures, and generated publication outputs.
 keywords:
   - slip-stick
   - tensile testing

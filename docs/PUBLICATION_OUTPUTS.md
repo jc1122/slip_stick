@@ -37,6 +37,9 @@ This writes:
 - `publication/generated/tables/release_force_table.md`
 - `publication/generated/tables/release_force_table.csv`
 - `publication/generated/tables/release_force_table_numeric.csv`
+- `publication/generated/tables/force_ratio_inner_outer_table.md`
+- `publication/generated/tables/force_ratio_inner_outer_table.csv`
+- `publication/generated/tables/force_ratio_inner_outer_table_numeric.csv`
 - `publication/generated/tables/threshold_sensitivity_supplement.md`
 - `publication/generated/tables/threshold_sensitivity_supplement.docx`
 - `publication/generated/figures/main/png/figure2_release_force_heatmap.png`
@@ -63,14 +66,17 @@ requires `matplotlib`.
 
 - Force values are rescaled from 90 mm collection width to 25 mm report width.
 - Release force is reported in cN/25 mm.
-- The release-force table uses each replicate's mean force over 50-200 mm.
+- The release-force table uses each replicate's mean force over 50-200 mm and
+  reports values as mean ± sample SD with the valid replicate count in each
+  cell.
 - Configuration values are the mean and sample SD of those replicate means.
 - Slip-stick peak counts use the same 50-200 mm window and the default
   1.4 cN/25 mm residual threshold. A count is one contiguous positive residual
   excursion above threshold, marked at the largest residual in that
   excursion.
-- The force-ratio row is calculated from regenerated inner and outer mean
-  release forces and rounded to an integer inner:outer ratio.
+- Force ratios are reported in a separate table, calculated from regenerated
+  inner and outer mean release forces and rounded to an integer inner:outer
+  ratio.
 - Main Figure 2 and Figure 8 are generated from
   `publication/generated/data/configuration_summary.csv`.
 - Main Figure 5 is generated from the representative traces listed in

@@ -622,7 +622,10 @@ def summary_lookup(rows: list[ConfigurationSummary]) -> dict[tuple[str, str, str
 def format_mean_sd(row: ConfigurationSummary | None) -> str:
     if row is None or not math.isfinite(row.mean_release_cN_25mm_mean):
         return ""
-    return f"{row.mean_release_cN_25mm_mean:.1f} +/- {row.mean_release_cN_25mm_sd:.1f}"
+    return (
+        f"{row.mean_release_cN_25mm_mean:.1f} ± "
+        f"{row.mean_release_cN_25mm_sd:.1f} (n={row.n_replicates})"
+    )
 
 
 def ratio_display(inner: ConfigurationSummary | None, outer: ConfigurationSummary | None) -> str:
@@ -655,33 +658,43 @@ def markdown_table(headers: list[str], rows: list[list[str]]) -> str:
 
 def write_release_tables(output_dir: Path, summaries: list[ConfigurationSummary]) -> None:
     lookup = summary_lookup(summaries)
-    table_rows: list[list[str]] = []
+    release_rows: list[list[str]] = []
+    ratio_rows: list[list[str]] = []
     numeric_rows: list[dict[str, object]] = []
+    ratio_numeric_rows: list[dict[str, object]] = []
 
     for liner in LINER_ORDER:
         liner_label = next(row.liner_label for row in summaries if row.liner == liner)
         for side in TABLE_SIDE_ORDER:
             side_label = "inner" if side == "internal" else "outer"
-            table_rows.append(
+            release_rows.append(
                 [liner_label, side_label]
                 + [
                     format_mean_sd(lookup.get((liner, sealant, side)))
                     for sealant in SEALANT_ORDER
                 ]
             )
-        ratio_row = [liner_label, "force ratio (inner : outer)"]
-        for sealant in SEALANT_ORDER:
-            ratio_row.append(
+
+        ratio_rows.append(
+            [liner_label, "inner:outer"]
+            + [
                 ratio_display(
                     lookup.get((liner, sealant, "internal")),
                     lookup.get((liner, sealant, "external")),
                 )
-            )
-        table_rows.append(ratio_row)
+                for sealant in SEALANT_ORDER
+            ]
+        )
 
         for sealant in SEALANT_ORDER:
             inner = lookup[(liner, sealant, "internal")]
             outer = lookup[(liner, sealant, "external")]
+            ratio_numeric = (
+                inner.mean_release_cN_25mm_mean / outer.mean_release_cN_25mm_mean
+                if outer.mean_release_cN_25mm_mean > 0
+                else math.nan
+            )
+            ratio_text = ratio_display(inner, outer)
             numeric_rows.append(
                 {
                     "liner": liner_label,
@@ -698,17 +711,32 @@ def write_release_tables(output_dir: Path, summaries: list[ConfigurationSummary]
                         outer.mean_release_cN_25mm_mean, 6
                     ),
                     "outer_sd_cN_25mm": finite_or_blank(outer.mean_release_cN_25mm_sd, 6),
-                    "inner_outer_ratio_numeric": finite_or_blank(
-                        inner.mean_release_cN_25mm_mean / outer.mean_release_cN_25mm_mean,
-                        6,
-                    )
-                    if outer.mean_release_cN_25mm_mean > 0
-                    else "",
-                    "ratio_display": ratio_display(inner, outer),
+                    "inner_outer_ratio_numeric": finite_or_blank(ratio_numeric, 6),
+                    "ratio_display": ratio_text,
+                }
+            )
+            ratio_numeric_rows.append(
+                {
+                    "liner": liner_label,
+                    "sealant": sealant,
+                    "ratio_convention": "inner:outer",
+                    "inner_file": inner.dataset_file,
+                    "outer_file": outer.dataset_file,
+                    "inner_n": inner.n_replicates,
+                    "outer_n": outer.n_replicates,
+                    "inner_mean_cN_25mm": finite_or_blank(
+                        inner.mean_release_cN_25mm_mean, 6
+                    ),
+                    "outer_mean_cN_25mm": finite_or_blank(
+                        outer.mean_release_cN_25mm_mean, 6
+                    ),
+                    "inner_outer_ratio_numeric": finite_or_blank(ratio_numeric, 6),
+                    "inner_outer_ratio_display": ratio_text,
                 }
             )
 
     headers = ["Liner", "Side"] + SEALANT_ORDER
+    ratio_headers = ["Liner", "Ratio convention"] + SEALANT_ORDER
     tables_dir = output_dir / "tables"
     tables_dir.mkdir(parents=True, exist_ok=True)
     (tables_dir / "release_force_table.md").write_text(
@@ -716,10 +744,11 @@ def write_release_tables(output_dir: Path, summaries: list[ConfigurationSummary]
             [
                 "# Release-Force Table",
                 "",
-                f"Values are mean +/- sample SD in {FORCE_UNIT}.",
+                f"Values are mean ± sample SD (n=valid replicates) in {FORCE_UNIT}.",
                 "The calculation uses per-replicate mean force over 50-200 mm.",
+                "Force ratios are reported separately in `force_ratio_inner_outer_table.md`.",
                 "",
-                markdown_table(headers, table_rows),
+                markdown_table(headers, release_rows),
                 "",
             ]
         ),
@@ -731,7 +760,7 @@ def write_release_tables(output_dir: Path, summaries: list[ConfigurationSummary]
     ) as handle:
         writer = csv.writer(handle, **CSV_WRITE_KWARGS)
         writer.writerow(headers)
-        writer.writerows(table_rows)
+        writer.writerows(release_rows)
 
     numeric_path = tables_dir / "release_force_table_numeric.csv"
     with numeric_path.open("w", newline="", encoding="utf-8") as handle:
@@ -739,6 +768,36 @@ def write_release_tables(output_dir: Path, summaries: list[ConfigurationSummary]
         writer = csv.DictWriter(handle, fieldnames=fieldnames, **CSV_WRITE_KWARGS)
         writer.writeheader()
         writer.writerows(numeric_rows)
+
+    (tables_dir / "force_ratio_inner_outer_table.md").write_text(
+        "\n".join(
+            [
+                "# Force-Ratio Table (inner:outer)",
+                "",
+                "Ratio convention: inner:outer = inner-side mean release force divided by outer-side mean release force.",
+                "Ratios are computed from unrounded configuration means in `release_force_table_numeric.csv` and displayed as the nearest integer inner:outer ratio; near-unity ratios are shown as 1:1.",
+                "",
+                markdown_table(ratio_headers, ratio_rows),
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    with (tables_dir / "force_ratio_inner_outer_table.csv").open(
+        "w", newline="", encoding="utf-8"
+    ) as handle:
+        writer = csv.writer(handle, **CSV_WRITE_KWARGS)
+        writer.writerow(ratio_headers)
+        writer.writerows(ratio_rows)
+
+    with (tables_dir / "force_ratio_inner_outer_table_numeric.csv").open(
+        "w", newline="", encoding="utf-8"
+    ) as handle:
+        fieldnames = list(ratio_numeric_rows[0].keys())
+        writer = csv.DictWriter(handle, fieldnames=fieldnames, **CSV_WRITE_KWARGS)
+        writer.writeheader()
+        writer.writerows(ratio_numeric_rows)
 
 
 def write_warnings(output_dir: Path, summaries: list[ConfigurationSummary]) -> None:

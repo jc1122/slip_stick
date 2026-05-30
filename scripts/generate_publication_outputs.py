@@ -15,6 +15,7 @@ import os
 import sys
 import zipfile
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable, Sequence
 from xml.sax.saxutils import escape
@@ -52,6 +53,12 @@ NORMAL_RELEASE_Y_MIN_CN = 0.0
 NORMAL_RELEASE_Y_MAX_CN = 30.0
 SEVERE_RELEASE_ABOVE_NORMAL_FRACTION = 0.05
 DEFAULT_THRESHOLD_SENSITIVITY_CN = [0.5, 1.0, 1.4, 2.0, 3.0]
+PDF_METADATA = {
+    "Creator": "slipstick publication generator",
+    "Producer": "Matplotlib",
+    "CreationDate": datetime(2026, 5, 29, tzinfo=timezone.utc),
+    "ModDate": datetime(2026, 5, 29, tzinfo=timezone.utc),
+}
 
 
 @dataclass(frozen=True)
@@ -1634,10 +1641,19 @@ def save_figure(
     for suffix in image_formats:
         out_path = output_dir / "figures" / subdir / suffix / f"{stem}.{suffix}"
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        save_kwargs = {"dpi": dpi} if suffix.lower() in {"png", "jpg", "jpeg"} else {}
+        save_kwargs = figure_save_kwargs(suffix, dpi=dpi)
         fig.savefig(out_path, **save_kwargs)
         paths[f"{suffix}_path"] = str(out_path.relative_to(output_dir))
     return paths
+
+
+def figure_save_kwargs(suffix: str, *, dpi: int) -> dict[str, object]:
+    lower = suffix.lower()
+    if lower in {"png", "jpg", "jpeg"}:
+        return {"dpi": dpi}
+    if lower == "pdf":
+        return {"metadata": PDF_METADATA}
+    return {}
 
 
 def set_main_plot_style(plt) -> None:
@@ -1719,7 +1735,7 @@ def plot_two_panel_heatmap(
         axes,
         ["external", "internal"],
         ["(a)", "(b)"],
-        ["External side", "Internal side"],
+        ["Outer side", "Inner side"],
     ):
         data = configuration_matrix(summaries, side=side, field=field)
         image = ax.imshow(data, cmap="viridis", vmin=0.0, vmax=vmax, aspect="auto")
@@ -2552,7 +2568,7 @@ def plot_figure(
     for suffix in image_formats:
         out_path = output_dir / "figures" / "release_curves" / suffix / f"{stem}.{suffix}"
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        save_kwargs = {"dpi": dpi} if suffix.lower() in {"png", "jpg", "jpeg"} else {}
+        save_kwargs = figure_save_kwargs(suffix, dpi=dpi)
         fig.savefig(out_path, **save_kwargs)
         paths[suffix] = str(out_path.relative_to(output_dir))
     plt.close(fig)
@@ -2647,7 +2663,7 @@ def caption(row: dict[str, object]) -> str:
             f"Panels marked as 0-{NORMAL_RELEASE_Y_MAX_CN:.0f} comparison use a "
             f"shared 0-{NORMAL_RELEASE_Y_MAX_CN:.0f} cN/25 mm y-axis, with values "
             "above this range omitted from that comparison view. Full-range "
-            "panels retain all above-range values. Sides with more than "
+            "panels retain all above-range values. Sides with at least "
             f"{SEVERE_RELEASE_ABOVE_NORMAL_FRACTION:.0%} of samples above "
             f"{NORMAL_RELEASE_Y_MAX_CN:.0f} cN/25 mm are shown only at full range "
             f"(figure maximum {float(row['observed_max_cN_25mm']):.1f} cN/25 mm)."
@@ -2659,18 +2675,18 @@ def caption(row: dict[str, object]) -> str:
         )
     if row["y_axis_mode"] == "shared_0_30_with_full_range_panels":
         panel_text = (
-            f"The external liner side "
+            f"The outer liner side "
             f"(n = {row['external_shown_n']} shown from {row['external_total_n']} "
             f"traces) is shown as {display_mode_description(str(row['external_display_mode']))}; "
-            f"the internal liner side "
+            f"the inner liner side "
             f"(n = {row['internal_shown_n']} shown from {row['internal_total_n']} "
             f"traces) is shown as {display_mode_description(str(row['internal_display_mode']))}."
         )
     else:
         panel_text = (
-            f"Panel (a) shows the external liner side "
+            f"Panel (a) shows the outer liner side "
             f"(n = {row['external_shown_n']} shown from {row['external_total_n']} "
-            f"traces); panel (b) shows the internal liner side "
+            f"traces); panel (b) shows the inner liner side "
             f"(n = {row['internal_shown_n']} shown from {row['internal_total_n']} "
             "traces)."
         )

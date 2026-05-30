@@ -15,9 +15,15 @@ __pycache__/
 .venv/
 .worktrees/
 
+# Local raw contact-angle workbook; the publication archive uses CSV exports.
+gonio.xls
+publication/source_data/gonio.xls
+
 # Secrets & local agent config
 .codex/
 .codex/github.env
+zenodo_deposition*.json
+zenodo_reserved_doi.txt
 
 # Misc
 *.npz

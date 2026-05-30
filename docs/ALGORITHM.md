@@ -6,7 +6,7 @@ The slip-stick spike detection algorithm implements a multi-stage signal process
 
 ## Processing Pipeline
 
-### 1. Data Loading and Validation
+### 1. Data Loading and Runtime Preconditions
 
 **Input format:** FTM 10 CSV files with:
 - 3-row header
@@ -14,11 +14,11 @@ The slip-stick spike detection algorithm implements a multi-stage signal process
 - Column triples: (time, force, displacement) × N replicates
 - Encoding: CP1250
 
-**Validation checks:**
-- Monotonically increasing time series
-- Non-negative displacement values
-- Consistent sampling rate within replicates
-- Minimum sample count (>100 samples recommended)
+**Implemented checks and assumptions:**
+- The loader keeps complete time/force/displacement triples whose headers match the expected labels and units.
+- Non-numeric or incomplete rows are skipped while populating each replicate.
+- Later analysis stages require a non-empty 50-200 mm analysis window and positive time deltas for sampling-rate estimation.
+- The current loader does not hard-fail a file solely for non-monotonic time, negative displacement, or nonuniform sampling.
 
 ### 2. Force Normalization
 
@@ -58,14 +58,16 @@ force_scaled = force_n * (report_width_mm / collection_width_mm)
    noise_samples = force_n[mask]
    ```
 
-2. **Optional engagement detection:**
-   - If `noise_force_onset` provided, truncate at first sample exceeding threshold
+2. **Engagement detection:**
+   - If `noise_force_onset` is provided, truncate at the first sample exceeding the threshold
+   - The CLI and publication generator pass a default onset of 0.2 N at the collection width, scaled to the reporting width
    - Prevents contamination from early specimen contact
 
 3. **Baseline fitting:**
-   - Long-window Savitzky-Golay filter (polynomial order 3)
-   - Window length: 50% of noise sample duration (minimum 2 s)
-   - Removes slow drift and DC offset
+   - Long-window Savitzky-Golay filter (polynomial order 2)
+   - Window length: approximately 50% of the selected displacement span
+   - Edge handling: `mode="interp"` in the noise-estimation path
+   - Removes slow drift and force offset
 
 4. **Residual calculation:**
    ```python
@@ -74,7 +76,7 @@ force_scaled = force_n * (report_width_mm / collection_width_mm)
 
 5. **Statistics computation:**
    - Standard deviation: `σ = std(residual)`
-   - DC offset: `μ = mean(residual)`
+   - Fitted-baseline force offset: `μ = mean(baseline)`
    - Maximum absolute: `max_abs = max(|residual|)`
 
 6. **Spectral analysis:**
@@ -87,13 +89,13 @@ force_scaled = force_n * (report_width_mm / collection_width_mm)
 @dataclass
 class NoiseEstimate:
     std_n: float              # Noise standard deviation
-    dc_offset_n: float        # DC bias
+    dc_offset_n: float        # Mean fitted-baseline force offset
     max_abs_n: float          # Maximum absolute residual
     sample_count: int         # Number of samples in noise window
     disp_max_mm: float        # Actual max displacement sampled
     time_span_s: float        # Duration of noise window
-    sample_rate_hz: float     # Estimated sampling rate
-    noise_peak_hz: float      # Dominant noise frequency
+    sample_rate_hz: float | None  # Estimated sampling rate
+    noise_peak_hz: float | None   # Dominant noise frequency
 ```
 
 ### 4. Dataset-Level Filter Design
@@ -163,11 +165,13 @@ class NoiseEstimate:
 
 4. **Zero-phase application:**
    ```python
-   filtered_force = filtfilt(b, a, force_n, method='gust')
+   filtered_force = filtfilt(b, a, force_n)
    ```
 
 5. **Padding check:**
-   - `filtfilt` requires `3 × filter_order` samples
+   - The implementation uses SciPy's default `filtfilt` padding method
+   - A replicate is filtered only when its length exceeds
+     `3 * max(len(a), len(b))`
    - Skip filtering if insufficient samples
 
 **Physical interpretation:**
@@ -233,7 +237,7 @@ baseline = savgol_filter(
     cropped_force,
     window_length=window_length,
     polyorder=3,
-    mode='interp'  # Extrapolate at edges
+    mode='mirror'
 )
 ```
 
@@ -241,6 +245,11 @@ baseline = savgol_filter(
 ```python
 residual = cropped_force - baseline
 ```
+
+**Implementation note:**
+- The main 50-200 mm baseline uses `mode="mirror"` for edge handling.
+- The shorter instrumental-noise baseline uses `mode="interp"` because it is
+  fitted on a pre-test segment and is used only for noise characterization.
 
 **Physical interpretation:**
 - Long window (tens of seconds) averages out short spikes
@@ -263,9 +272,9 @@ event_indices = [
 ```
 
 **Threshold selection:**
-- Default: 1.4 cN/25 mm (0.0504 N at 90 mm collection width)
+- Default: 1.4 cN/25 mm (stored by the CLI as 0.0504 N at 90 mm collection width and scaled to 0.014 N in a 25 mm analysis trace)
 - Rationale: ~10× typical noise floor (0.05–0.15 cN/25 mm)
-- Adjustable via `--threshold` CLI parameter
+- The per-file CLI parses explicit `--threshold` values in the selected force unit at the collection width before width scaling; the publication generator's `--threshold-cN` is direct cN/25 mm
 
 **Peak properties:**
 ```python
@@ -300,7 +309,7 @@ for idx in event_indices:
    freqs, power = periodogram(
        residual_centered,
        fs=sample_rate_hz,
-       scaling='density'
+       scaling='spectrum'
    )
    ```
 
@@ -401,6 +410,12 @@ the event marker is placed at:
 
 **Default:** 1.4 cN/25 mm
 
+In the per-file CLI, explicit `--threshold` values are parsed in `--report-unit`
+at the collection width and then scaled by `report_width_mm / collection_width_mm`.
+With default widths, `--threshold 5.04 --report-unit cN` displays as
+1.400 cN/25 mm. Publication table regeneration uses `--threshold-cN` directly
+in cN/25 mm.
+
 **Adjustment criteria:**
 - **Decrease** to detect smaller spikes (may increase false positives)
 - **Increase** to focus on larger events (may miss subtle slip-stick)
@@ -415,24 +430,24 @@ the event marker is placed at:
 - **Increase** (>0.8) for mild filtering (preserve more high-frequency content)
 - **Verify:** Filtered force should preserve slip-stick events, remove vibrations
 
-## Validation Checks
+## Implemented Checks and Expected Data Conditions
 
-### Input Validation
-- ✓ Time series monotonically increasing
-- ✓ No negative displacements
-- ✓ Sufficient samples in noise window (>10)
-- ✓ Sufficient samples in analysis window (>polyorder+1)
+### Input and Sampling
+- Complete header triples are required for a replicate to be loaded
+- Rows with unparsable numeric values are skipped
+- Sampling rate is estimated from positive time differences
+- Analysis requires at least `polyorder + 2` samples in the selected displacement window
 
 ### Processing Validation
-- ✓ Sampling rate estimation reasonable (50–200 Hz typical)
-- ✓ Filter cutoff below Nyquist frequency
-- ✓ Baseline follows slow trends, not spikes
-- ✓ Residual centered near zero (mean ≈ 0)
+- Filter cutoff is bounded below 95% of Nyquist
+- Filtering is skipped when the trace is too short for SciPy's `filtfilt` padding
+- Baseline fitting falls back to a mean baseline if Savitzky-Golay fitting raises `ValueError`
+- Noise estimates use the requested minimum sample count before force-onset truncation; a smaller retained segment can still be reported
 
 ### Output Validation
-- ✓ Detected spikes exceed threshold
-- ✓ Spike times within analysis window
-- ✓ Noise statistics reasonable (std < 1 cN/25 mm typical)
+- Detected spikes are threshold maxima within contiguous positive residual excursions
+- Spike times and displacements are inside the selected analysis window
+- Noise and residual spectra are diagnostic outputs, not additional gates
 
 ## Performance Characteristics
 
@@ -440,10 +455,10 @@ the event marker is placed at:
 
 - **Data loading:** O(n) where n = file size
 - **Noise estimation:** O(m) where m = noise window samples
-- **Filtering:** O(n log n) due to FFT in `filtfilt`
+- **Filtering:** O(n) for the applied IIR forward-backward filter
 - **Baseline fitting:** O(n) for Savitzky-Golay
 - **Spike detection:** O(n) for peak finding
-- **Overall:** O(n log n) per replicate
+- **Overall:** O(n) per replicate for the implemented processing path
 
 ### Memory Usage
 
@@ -486,27 +501,25 @@ the event marker is placed at:
 ```python
 from slipstick.io import load_replicates
 from slipstick.core import estimate_instrumental_noise, _analyse_replicate
-from slipstick.models import CliConfig
+from slipstick.core import process_replicates
 
 # Load data
 replicates = load_replicates("data.csv")
 
-# Configure analysis
-config = CliConfig(
-    collection_width_mm=90.0,
-    report_width_mm=25.0,
-    force_scale=25.0/90.0,
-    disp_min=50.0,
-    disp_max=200.0,
-    threshold_n=0.0504,  # 1.4 cN/25 mm
-    # ... other parameters
+# Scale force from 90 mm collection width to 25 mm reporting width
+processed = process_replicates(
+    replicates,
+    force_scale=25.0 / 90.0,
+    cutoff_hz=None,
 )
 
 # Analyze first replicate
 result = _analyse_replicate(
-    replicate=replicates[0],
-    config=config,
-    sample_rate_hz=100.0
+    replicate=processed[0],
+    displacement_window=(50.0, 200.0),
+    window_seconds=None,
+    polyorder=3,
+    threshold=0.014,  # 1.4 cN/25 mm in the scaled 25 mm trace
 )
 
 # Access results
@@ -518,13 +531,22 @@ for spike in result.spikes:
 ### Custom threshold example
 
 ```python
-import numpy as np
+from slipstick.io import load_replicates
+from slipstick.core import estimate_instrumental_noise, _analyse_replicate, process_replicates
 
-# Estimate noise
+# Estimate noise in the same scaled force units used for analysis
+replicate = process_replicates(
+    load_replicates("data.csv"),
+    force_scale=25.0 / 90.0,
+    cutoff_hz=None,
+)[0]
 noise_est = estimate_instrumental_noise(
     replicate=replicate,
-    noise_disp_min=1.0,
-    noise_disp_max=5.0
+    disp_min=1.0,
+    disp_max=5.0,
+    force_abs_max=None,
+    min_samples=40,
+    force_onset=None,
 )
 
 # Set threshold as 10× noise floor
@@ -532,6 +554,11 @@ threshold = 10 * noise_est.std_n
 print(f"Adaptive threshold: {threshold:.4f} N")
 
 # Use in analysis
-config.threshold_n = threshold
-result = _analyse_replicate(replicate, config, sample_rate_hz)
+result = _analyse_replicate(
+    replicate=replicate,
+    displacement_window=(50.0, 200.0),
+    window_seconds=None,
+    polyorder=3,
+    threshold=threshold,
+)
 ```

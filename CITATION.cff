@@ -3,6 +3,7 @@ message: "If you use this archive in your research, please cite it as below."
 title: "Slip-Stick Dynamics in Butyl Pressure-Sensitive Adhesive-Silicone Release Liner Systems: Data and Analysis Code"
 version: 1.0.0
 date-released: 2026-05-28
+doi: 10.5281/zenodo.20448892
 authors:
   - family-names: "Czakaj"
     given-names: "Jakub"
@@ -25,18 +26,20 @@ authors:
 abstract: >-
   Data and analysis code for a manuscript on slip-stick dynamics in butyl
   pressure-sensitive adhesive and silicone release-liner systems. The archive
-  contains FTM 10-type release-test datasets, the canonical generator used for
-  release-force tables and figures, and generated publication outputs.
+  contains datasets from modified FINAT FTM 10-type 180 degree release-liner
+  peel integration tests, the canonical generator used for release-force tables
+  and figures, locked-environment requirements, and generated publication
+  outputs.
 keywords:
   - slip-stick
-  - tensile testing
+  - release liner
   - signal processing
   - materials science
   - friction
   - adhesion
-  - FTM 10
+  - modified FINAT FTM 10
   - Python
-license: CC-BY-4.0
+license: CC-BY-4.0 AND MIT
 repository-code: "https://github.com/jc1122/slip_stick"
-url: "https://github.com/jc1122/slip_stick"
+url: "https://doi.org/10.5281/zenodo.20448892"
 type: dataset

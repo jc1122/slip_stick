@@ -503,8 +503,8 @@ def _build_parser() -> argparse.ArgumentParser:
         type=float,
         default=None,
         help=(
-            "Residual spike threshold in force units. Defaults to 0.014 N measured at the collection "
-            "width and is rescaled to match the requested reporting width/unit."
+            "Residual spike threshold in force units. Defaults to 0.0504 N measured at the "
+            "90 mm collection width, which rescales to 1.4 cN at the default 25 mm report width."
         ),
     )
     parser.add_argument(

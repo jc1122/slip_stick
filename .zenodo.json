@@ -3,6 +3,7 @@
   "upload_type": "dataset",
   "publication_date": "2026-05-28",
   "version": "1.0.0",
+  "doi": "10.5281/zenodo.20448892",
   "creators": [
     {
       "name": "Czakaj, Jakub",
@@ -29,7 +30,7 @@
       "affiliation": "Center for Advanced Technologies, Adam Mickiewicz University in Poznan"
     }
   ],
-  "description": "FTM 10-type release-test datasets, analysis code, and regenerated manuscript tables and figures for a study of slip-stick dynamics in butyl pressure-sensitive adhesive and silicone release-liner systems.",
+  "description": "Modified FINAT FTM 10-type 180 degree release-liner peel datasets, processed source values for material-property and water-contact-angle tables, analysis code, locked-environment requirements, a passing verification report, and regenerated manuscript tables and figures for a study of slip-stick dynamics in butyl pressure-sensitive adhesive and silicone release-liner systems. Data, generated outputs, documentation, and metadata are released under CC BY 4.0; software code is released under the MIT License.",
   "access_right": "open",
   "license": "cc-by-4.0",
   "keywords": [
@@ -37,7 +38,7 @@
     "release liner",
     "butyl sealant",
     "pressure-sensitive adhesive",
-    "FTM 10",
+    "modified FINAT FTM 10",
     "peel test",
     "silicone coating",
     "reproducible analysis"

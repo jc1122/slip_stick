@@ -1,0 +1,41 @@
+verification_report_2026-05-29.txt
+
+Archive: slip_stick/.worktrees/zenodo
+Generated: 2026-05-30
+
+Environment:
+Python 3.14.4
+numpy 2.4.6
+scipy 1.17.1
+matplotlib 3.10.9
+
+Command:
+python scripts/verify_publication_outputs.py
+
+Result:
+Analysed 42 configurations and 424 traces
+Tables: /tmp/slipstick_verify_56sj890o/tables
+Data: /tmp/slipstick_verify_56sj890o/data
+Figures skipped (--tables-only)
+Wrote /tmp/slipstick_verify_56sj890o/source_data/table2_water_contact_angle.csv
+Publication output verification passed.
+Checked files:
+- data/configuration_summary.csv
+- data/replicate_metrics.csv
+- data/threshold_noise_summary.csv
+- data/threshold_robustness.csv
+- data/threshold_robustness_summary.json
+- data/top_peak_configs.csv
+- data/warnings.csv
+- tables/force_ratio_inner_outer_table.csv
+- tables/force_ratio_inner_outer_table.md
+- tables/force_ratio_inner_outer_table_numeric.csv
+- tables/release_force_table.csv
+- tables/release_force_table.md
+- tables/release_force_table_numeric.csv
+- tables/threshold_sensitivity_supplement.md
+- source_data/table2_water_contact_angle.csv
+Sentinel values:
+- Rossella/C1E outer peak_count_1p4cN_mean = 4.300000
+- Rossella/C1E outer peak_count_1p4cN_sum = 43
+- threshold 1.4 cN total_peaks = 904

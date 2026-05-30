@@ -109,6 +109,11 @@ python scripts/run_all.py --slipstick-workers 2 --plot-workers 4 --max-datasets 
 
 This configuration provides 2-4x speedup over single-threaded processing while maintaining high CPU utilization.
 
+`run_all.py` reads `publication/dataset_manifest.csv`, writes per-dataset
+summaries to `summaries/`, writes plots under `plots/analysis`, `plots/noise`,
+and `plots/spectra`, and skips datasets that already have
+`summaries/<dataset>.txt`.
+
 ## Publication outputs
 
 The manuscript tables and supplementary release-curve figures are regenerated
@@ -169,9 +174,9 @@ The automated detection approach enables:
 
 ### Physical interpretation
 
-Detected spikes in the residual force (after baseline removal) represent:
-- **Positive spikes**: Stick events where interfacial resistance increases
-- **Negative spikes**: Slip events where stored elastic energy releases
+Residual force excursions (after baseline removal) represent:
+- **Positive spikes**: Stick events where interfacial resistance increases; these are the events counted by the detector
+- **Negative excursions**: Force drops below the local baseline; these are visible in residual plots but are not counted as slip-stick spike events
 - **Spike frequency**: Related to the periodicity of the stick-slip cycle
 - **Spike magnitude**: Proportional to the energy dissipated per event
 
@@ -181,10 +186,10 @@ Detected spikes in the residual force (after baseline removal) represent:
 
 The analysis follows a validated multi-stage pipeline:
 
-1. **Data loading and validation**
+1. **Data loading and runtime checks**
    - Parse FTM 10 CSV format (3-row header, comma decimals, replicate blocks)
    - Extract time, force, and displacement arrays for each replicate
-   - Validate data integrity and sampling consistency
+   - Downstream stages skip replicates without a usable analysis window or positive time-step sampling rate
 
 2. **Force normalization**
    - Rescale forces from collection width (90 mm) to reporting width (25 mm)
@@ -193,7 +198,7 @@ The analysis follows a validated multi-stage pipeline:
 
 3. **Instrumental noise characterization**
    - Sample pre-test baseline (default: 1–5 mm displacement)
-   - Compute noise statistics: standard deviation, DC offset, maximum absolute value
+   - Compute noise statistics: residual standard deviation, fitted-baseline force offset, maximum absolute residual
    - Estimate dominant instrument frequency via FFT periodogram
    - Derive dataset-level noise characteristics (median across replicates)
 
@@ -211,9 +216,9 @@ The analysis follows a validated multi-stage pipeline:
 
 6. **Spike detection**
    - Group contiguous positive residual excursions above the detection threshold
-   - Detection threshold: 1.4 cN/25 mm (configurable via `--threshold`)
+   - Detection threshold: 1.4 cN/25 mm by default
    - Report peak location (time, displacement) and magnitude
-   - Group nearby peaks to avoid duplicate detection
+   - Count one event per contiguous above-threshold residual excursion
 
 7. **Statistical summary and visualization**
    - Per-replicate spike counts and statistics
@@ -223,10 +228,10 @@ The analysis follows a validated multi-stage pipeline:
 ### Validation approach
 
 The method has been validated through:
-- **Noise floor analysis**: Pre-test baseline confirms instrument noise < 0.1 cN/25 mm
+- **Noise floor analysis**: Current generated configuration summaries have median pre-test noise standard deviations below 0.1 cN/25 mm
 - **Threshold selection**: 1.4 cN/25 mm exceeds 10× typical noise floor
 - **Visual inspection**: Automated detections match manual spike identification
-- **Reproducibility**: Consistent results across replicate tests (n=10 per dataset)
+- **Reproducibility**: Current generated outputs contain 424 raw replicate rows across the manifest
 - **Sensitivity analysis**: Tested across 42 publication datasets spanning 3 liner types and 7 sealants
 
 ## Concepts
@@ -242,7 +247,7 @@ For consistency the tool rescales force values by factor = report_width_mm / col
 
 - Purpose: sample a quiet pre-test interval to measure instrument background noise.
 - Why 1–5 mm: usually the specimen is not engaged in this range; <1 mm can include start-up transients, >5 mm may include engagement.
-- What is computed: residual standard deviation, DC offset (bias), max absolute residual, sample count, estimated sample rate, and a dominant noise frequency from the residual periodogram.
+- What is computed: residual standard deviation, fitted-baseline force offset, max absolute residual, sample count, estimated sample rate, and a dominant noise frequency from the residual periodogram.
 
 Adjust `--noise-disp-min`/`--noise-disp-max` if your test sequence places the quiet window elsewhere.
 
@@ -262,14 +267,14 @@ High-level pipeline (textual):
   - A small displacement window (default 1–5 mm) is sampled from each replicate and used to estimate the instrument noise characteristics. In this project we deliberately choose the range 1–5 mm because it is expected to contain no specimen signal: this is typically the pre-test region where the specimen is not yet engaged and the measured force reflects instrument noise only. Displacements below 1 mm may include start-up or fixture-related transients, while displacements above 5 mm can include early specimen engagement and the onset of meaningful signal. This 1–5 mm window is therefore a pragmatic choice to capture instrument background noise while avoiding contamination from test dynamics. The function then:
     - selects samples with displacement inside the noise window and optionally restricts to low absolute forces (avoid early contact) or truncates after specimen engagement;
     - fits a simple long-window Savitzky–Golay baseline (or mean fallback) to remove slow ramps and computes the residuals;
-    - returns a `NoiseEstimate` containing the residual standard deviation, DC offset, maximum absolute residual, sample count, sample rate, and a dominant noise peak frequency computed from the residual periodogram.
+    - returns a `NoiseEstimate` containing the residual standard deviation, fitted-baseline force offset, maximum absolute residual, sample count, sample rate, and a dominant noise peak frequency computed from the residual periodogram.
   - Why: these statistics characterise the instrument's short-range variability and provide a robust estimate of background noise for thresholding and filter design.
 
 3. Compute dataset-level instrument peak and suggested cutoff
   - The CLI collects replicate-level noise peak frequencies and computes a central value (median) to represent the dataset's dominant instrument frequency. This `common_peak_hz` can be overridden by `--instrument-peak-hz`.
   - A suggested low-pass filter cutoff is derived by scaling the peak by `--instrument-cutoff-factor` (default 0.8). This cutoff is used to design a zero-phase Butterworth filter applied to traces before spike analysis.
   - What & why: the instrument sometimes introduces narrowband oscillations (mechanical or electrical). Identifying the instrument's dominant noise peak and low-pass filtering below that band reduces false-positive spikes caused by instrument vibration while preserving the slip–stick residual band of interest.
-5. Optional low-pass denoising (zero-phase Butterworth via `process_replicates`)
+4. Optional low-pass denoising (zero-phase Butterworth via `process_replicates`)
    - Why: Narrowband instrument vibrations or electrical noise can introduce false-positive peaks in the residual. A conservative low-pass filter removes high-frequency instrument content while preserving low-frequency slip–stick features.
    - How it works:
      - Sampling rate estimation: the function estimates the sample rate from median positive time deltas in `replicate.time_s`.
@@ -279,7 +284,7 @@ High-level pipeline (textual):
      - Safety checks: the code computes a required padding length and only applies filtering when the replicate has more samples than the pad length; otherwise filtering is skipped to avoid artifacts.
    - Result: `process_replicates` returns `Replicate` objects where `force_n` has been optionally replaced with the filtered trace.
 
-6. Baseline estimation and residual calculation per replicate (`_analyse_replicate`)
+5. Baseline estimation and residual calculation per replicate (`_analyse_replicate`)
    - Purpose: compute a slowly-varying baseline representing drift/ramps and subtract it from the force trace to expose short-lived slip–stick residuals.
    - Steps:
      - Crop to analysis window: retain only samples with `disp_mm` between `--disp-min` and `--disp-max` (defaults 50–200 mm).
@@ -289,7 +294,7 @@ High-level pipeline (textual):
      - Baseline & residual: `_compute_baseline_and_residual` applies `savgol_filter` (mode mirror or interp fallback) to compute the baseline, then residual = force − baseline.
    - Output: a `DetectionResult` containing cropped `time`, `disp`, `force`, `baseline`, `residual`, plus eventual spikes and spectral information.
 
-7. Spike detection and residual spectral analysis
+6. Spike detection and residual spectral analysis
    - Spike detection (`_find_spikes`):
      - The algorithm identifies contiguous regions where the residual is at or above the positive threshold.
      - Each threshold excursion is reported as one spike event, marked at the sample with the largest residual within that excursion.
@@ -297,9 +302,9 @@ High-level pipeline (textual):
    - Residual spectrum (`_find_peak_frequency`):
      - The residual is demeaned and a periodogram is computed to obtain a power spectrum (frequencies and power).
      - DC is ignored and the frequency with maximum power is identified as the peak frequency (if the residual has enough samples).
-     - This peak is used for diagnostics and (together with the cutoff factor) to design the optional denoising filter.
+     - This peak is used for diagnostics; the optional denoising cutoff is derived earlier from the noise-window instrument peak.
 
-8. Summaries and optional plotting
+7. Summaries and optional plotting
    - Per-replicate summaries (`print_replicate_summary`):
      - Prints sample count, display threshold (scaled to `--report-unit` and `--report-width-mm`), noise statistics (std, bias, max abs), applied filter cutoff (if used), and the list of detected spikes (time, disp, residual displayed in the requested unit).
    - Dataset-level noise summary (`print_noise_summary`):
@@ -316,8 +321,8 @@ Plot outputs (what you'll see)
 
 - Analysis plot (per replicate)
   - Purpose: visual check of the baseline fit, residuals and detected spikes.
-  - Typical layout: top panel shows the (optionally denoised) force trace vs displacement or time with the Savitzky–Golay baseline overlaid; middle panel shows the residual trace (force − baseline) with the detection threshold drawn and detected spike indices marked; optional inset or bottom panel may show a zoom around detected events.
-  - Labels: time (s) and/or displacement (mm) on the x-axis and force in the chosen report unit (N or cN) on the y-axis.
+  - Typical layout: top panel shows the (optionally denoised) force trace vs displacement with the Savitzky-Golay baseline overlaid; bottom panel shows the residual trace (force - baseline) with the detection threshold drawn and detected spike indices marked.
+  - Labels: displacement (mm) on the x-axis and force in the chosen report unit (N or cN) on the y-axis.
 
 - Noise plot (per replicate)
   - Purpose: inspect the samples used to estimate instrument noise and verify that the chosen noise window is quiet.
@@ -362,7 +367,6 @@ flowchart TD
   P --> Q["Exit (0): summaries on stdout"]
   Z --> Q2["Exit (1): no replicates"]
 ```
-```
 
 ## CLI options (common)
 
@@ -373,7 +377,12 @@ flowchart TD
 | `--input`, `-i` | Path to CSV file | (required) |
 | `--disp-min` | Analysis lower displacement (mm) — beginning of clean data; values <50 mm may include start-up artifacts. Choose a value where the trace has settled into a plateau. | 50.0 |
 | `--disp-max` | Analysis upper displacement (mm) — end of analysis window; prefer a plateau region before the test end or large events. Avoid including the measurement end where dynamics change. | 200.0 |
-| `--threshold` | Detection threshold (report unit) | None (defaults applied) |
+| `--threshold` | Optional CLI threshold value in the selected force unit at the collection width; the CLI then applies collection-to-report width scaling. Leave unset for the publication default. | None (1.4 cN/25 mm with default widths) |
+
+With the default 90 mm collection width and 25 mm report width, an explicit
+`--threshold 5.04 --report-unit cN` displays as 1.400 cN/25 mm after scaling.
+For publication-output sweeps, `scripts/generate_publication_outputs.py` uses
+`--threshold-cN` directly in cN/25 mm.
 
 ### Noise / filtering
 
@@ -411,7 +420,7 @@ Guidance on selecting the analysis window
 Routine QC (per-file report + plots):
 
 ```bash
-python -m slipstick.cli --input sample.csv --plot-dir qc_plots/ --threshold 1.5
+python -m slipstick.cli --input sample.csv --plot-dir qc_plots/
 ```
 
 Generate vector publication figures:
@@ -424,7 +433,7 @@ MPLBACKEND=module://mplcairo.base python -m slipstick.cli --input sample.csv --p
 
 ### Test coverage
 
-The codebase includes comprehensive unit tests covering:
+The included `test_refactoring.py` smoke/regression script covers:
 - Force scaling and unit conversion utilities
 - CSV parsing and data loading
 - Noise estimation algorithms
@@ -437,11 +446,7 @@ Run the test suite:
 python test_refactoring.py
 ```
 
-**Current metrics:**
-- Test coverage: ~45%
-- Code quality: A-grade architectural compliance
-- Linting: Passes Ruff with no errors
-- Formatting: Black-compliant
+The script prints a success message when these helper checks pass.
 
 ### Dataset validation
 
@@ -449,8 +454,9 @@ The software has been validated on the 42 publication datasets comprising:
 - **Material types**: 7 (C1E, T1E, T1EN, C1EN, T2EN, U2E, T2E)
 - **Liner types**: 3 (rossella, crosil42, dolpap)
 - **Test configurations**: Internal and external surfaces
-- **Replicates per dataset**: Typically 10-11
-- **Total measurements**: 424 individual replicate tests
+- **Raw replicate traces per dataset**: 9-12 in the current manifest
+- **Valid 50-200 mm traces per configuration**: 5-11 in the current generated summaries
+- **Total measurements**: 424 raw individual replicate tests
 
 ### Reproducibility
 

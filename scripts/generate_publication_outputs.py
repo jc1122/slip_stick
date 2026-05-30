@@ -1700,7 +1700,6 @@ def annotate_heatmap(ax, data: np.ndarray, *, vmax: float, mark_outliers: bool) 
             text_color = "black" if normalized > 0.62 else "white"
             text = f"{value:.1f}"
             if mark_outliers and value > vmax:
-                text = f"{value:.1f}\noutlier"
                 text_color = "black"
             ax.text(
                 j,
@@ -1735,7 +1734,7 @@ def plot_two_panel_heatmap(
         axes,
         ["external", "internal"],
         ["(a)", "(b)"],
-        ["External side", "Internal side"],
+        ["Outer side", "Inner side"],
     ):
         data = configuration_matrix(summaries, side=side, field=field)
         image = ax.imshow(data, cmap="viridis", vmin=0.0, vmax=vmax, aspect="auto")
@@ -2013,7 +2012,8 @@ def write_main_figure_manifest(output_dir: Path, rows: list[dict[str, object]]) 
         "",
         "## Figure 2",
         "",
-        f"Heatmap of mean release force values [{FORCE_UNIT}] for all liner-sealant combinations. "
+        f"Heatmap of mean release force values [{FORCE_UNIT}] for all liner-sealant combinations: "
+        "(a) outer liner side; (b) inner liner side. "
         "The color scale is capped at 25 cN/25 mm for readability.",
         "",
         "## Figure 5",
@@ -2663,7 +2663,7 @@ def caption(row: dict[str, object]) -> str:
             f"Panels marked as 0-{NORMAL_RELEASE_Y_MAX_CN:.0f} comparison use a "
             f"shared 0-{NORMAL_RELEASE_Y_MAX_CN:.0f} cN/25 mm y-axis, with values "
             "above this range omitted from that comparison view. Full-range "
-            "panels retain all above-range values. Sides with more than "
+            "panels retain all above-range values. Sides with at least "
             f"{SEVERE_RELEASE_ABOVE_NORMAL_FRACTION:.0%} of samples above "
             f"{NORMAL_RELEASE_Y_MAX_CN:.0f} cN/25 mm are shown only at full range "
             f"(figure maximum {float(row['observed_max_cN_25mm']):.1f} cN/25 mm)."
@@ -2675,18 +2675,18 @@ def caption(row: dict[str, object]) -> str:
         )
     if row["y_axis_mode"] == "shared_0_30_with_full_range_panels":
         panel_text = (
-            f"The external liner side "
+            f"The outer liner side "
             f"(n = {row['external_shown_n']} shown from {row['external_total_n']} "
             f"traces) is shown as {display_mode_description(str(row['external_display_mode']))}; "
-            f"the internal liner side "
+            f"the inner liner side "
             f"(n = {row['internal_shown_n']} shown from {row['internal_total_n']} "
             f"traces) is shown as {display_mode_description(str(row['internal_display_mode']))}."
         )
     else:
         panel_text = (
-            f"Panel (a) shows the external liner side "
+            f"Panel (a) shows the outer liner side "
             f"(n = {row['external_shown_n']} shown from {row['external_total_n']} "
-            f"traces); panel (b) shows the internal liner side "
+            f"traces); panel (b) shows the inner liner side "
             f"(n = {row['internal_shown_n']} shown from {row['internal_total_n']} "
             "traces)."
         )

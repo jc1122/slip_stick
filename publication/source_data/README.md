@@ -23,9 +23,10 @@ characterization described in the manuscript methods and from Almara internal
 commercial-material production records. The deposited Table 1 file is a
 processed summary table only; raw Almara production/QC datasets are
 company-internal records and are not part of this open archive. Peel adhesion
-values are reported as mean and sample standard deviation for n = 10; the other
-quantitative parameters are reported as mean and sample standard deviation for
-n = 3.
+values are reported in N/24 mm as mean and sample standard deviation for
+n = 10, consistent with the 24 mm EN 1939 specimen width used for this
+characterization; the other quantitative parameters are reported as mean and
+sample standard deviation for n = 3.
 
 Table 2 provenance: static water contact angles were measured by sessile-drop
 assessment with distilled water at 23 deg C. Five measurements were acquired for

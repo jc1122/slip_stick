@@ -33,6 +33,7 @@ python scripts/generate_publication_outputs.py
 
 This writes:
 
+- `publication/generated/README.md`
 - `publication/generated/data/replicate_metrics.csv`
 - `publication/generated/data/configuration_summary.csv`
 - `publication/generated/data/threshold_noise_summary.csv`
@@ -76,12 +77,14 @@ python scripts/verify_publication_outputs.py
 ```
 
 The verification script checks the submitted-output Python/package versions,
-regenerates tabular outputs in a temporary directory, compares them with
+regenerates tabular/data outputs in a temporary directory, compares the
+machine-readable CSV/JSON plus Markdown table outputs with
 `publication/generated/`, regenerates the processed Table 2 contact-angle
 summary from `publication/source_data/table2_water_contact_angle_gonio_raw.csv`,
 and checks sentinel values for the Rossella/C1E outer peak count and the default
-1.4 cN/25 mm threshold total. Use the included `Dockerfile` for a clean
-containerized verification run.
+1.4 cN/25 mm threshold total. Generated figures, captions, the generated README,
+and DOCX containers are not byte-compared by this verifier. Use the included
+`Dockerfile` for a clean containerized verification run.
 
 ## Calculation Rules
 
@@ -117,7 +120,7 @@ containerized verification run.
   Every main panel uses the same shared 0-30 cN/25 mm y-axis. Figures
   containing traces above 30 cN/25 mm are flagged in the manifest and captions;
   sides with only brief above-range excursions use paired comparison and
-  full-range panels, while sides with more than 5% of samples above 30 cN/25 mm
+  full-range panels, while sides with at least 5% of samples above 30 cN/25 mm
   are shown only at full range because the comparison-scale panel would not be
   informative.
 

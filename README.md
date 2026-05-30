@@ -64,10 +64,20 @@ docker build -t slipstick-publication .
 docker run --rm slipstick-publication
 ```
 
-For Zenodo deposition, upload the final staging ZIP as a single file. The helper
-`scripts/zenodo_deposit.py` can reserve a draft DOI and upload that ZIP through
-the Zenodo REST API when `ZENODO_ACCESS_TOKEN` is set. It will not publish the
-record unless the explicit `publish --publish` command is used.
+For Zenodo deposition, build the final staging ZIP from committed contents and
+upload that single file:
+
+```bash
+git archive --format=zip --prefix=slipstick_zenodo_staging_2026-05-29/ \
+  --output ../slipstick_zenodo_staging_2026-05-29.zip HEAD
+unzip -t ../slipstick_zenodo_staging_2026-05-29.zip
+```
+
+This archive path excludes ignored local deposition state, Python caches, and
+other untracked working-tree files. The helper `scripts/zenodo_deposit.py` can
+reserve a draft DOI and upload that ZIP through the Zenodo REST API when
+`ZENODO_ACCESS_TOKEN` is set. It will not publish the record unless the explicit
+`publish --publish` command is used.
 
 Optional faster vector graphics support:
 

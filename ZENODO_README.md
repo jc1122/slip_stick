@@ -65,10 +65,20 @@ docker run --rm slipstick-publication
 
 ## Zenodo Upload Unit
 
-Upload the Zenodo staging ZIP as one file. Do not upload the extracted archive
-contents as individual Zenodo files: the extracted tree contains more than 100
-files, while the single ZIP keeps the upload below Zenodo's per-record file-count
-limit and preserves the internal directory structure.
+Build the Zenodo staging ZIP from committed contents and upload it as one file:
+
+```bash
+git archive --format=zip --prefix=slipstick_zenodo_staging_2026-05-29/ \
+  --output ../slipstick_zenodo_staging_2026-05-29.zip HEAD
+unzip -t ../slipstick_zenodo_staging_2026-05-29.zip
+```
+
+Do not upload the extracted archive contents as individual Zenodo files: the
+extracted tree contains more than 100 files, while the single ZIP keeps the
+upload below Zenodo's per-record file-count limit and preserves the internal
+directory structure. Do not create the upload package with a raw working-tree
+`zip -r`: the `git archive` command above excludes ignored local deposition
+state, Python caches, and other untracked files.
 
 ## DOI Reservation and Upload Helper
 
@@ -79,7 +89,7 @@ is available:
 ```bash
 export ZENODO_ACCESS_TOKEN=...
 python scripts/zenodo_deposit.py reserve
-python scripts/zenodo_deposit.py upload --file slipstick_zenodo_staging_2026-05-29.zip
+python scripts/zenodo_deposit.py upload --file ../slipstick_zenodo_staging_2026-05-29.zip
 ```
 
 The script writes `zenodo_deposition_draft.json` and `zenodo_reserved_doi.txt`

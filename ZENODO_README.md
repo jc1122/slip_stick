@@ -68,9 +68,9 @@ docker run --rm slipstick-publication
 Build the Zenodo staging ZIP from committed contents and upload it as one file:
 
 ```bash
-git archive --format=zip --prefix=slipstick_zenodo_staging_2026-05-29/ \
-  --output ../slipstick_zenodo_staging_2026-05-29.zip HEAD
-unzip -t ../slipstick_zenodo_staging_2026-05-29.zip
+git archive --format=zip --prefix=slipstick_zenodo_staging_2026-05-30/ \
+  --output ../slipstick_zenodo_staging_2026-05-30.zip HEAD
+unzip -t ../slipstick_zenodo_staging_2026-05-30.zip
 ```
 
 Do not upload the extracted archive contents as individual Zenodo files: the
@@ -89,7 +89,7 @@ is available:
 ```bash
 export ZENODO_ACCESS_TOKEN=...
 python scripts/zenodo_deposit.py reserve
-python scripts/zenodo_deposit.py upload --file ../slipstick_zenodo_staging_2026-05-29.zip
+python scripts/zenodo_deposit.py upload --file ../slipstick_zenodo_staging_2026-05-30.zip
 ```
 
 The script writes `zenodo_deposition_draft.json` and `zenodo_reserved_doi.txt`

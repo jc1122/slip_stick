@@ -68,9 +68,9 @@ For Zenodo deposition, build the final staging ZIP from committed contents and
 upload that single file:
 
 ```bash
-git archive --format=zip --prefix=slipstick_zenodo_staging_2026-05-29/ \
-  --output ../slipstick_zenodo_staging_2026-05-29.zip HEAD
-unzip -t ../slipstick_zenodo_staging_2026-05-29.zip
+git archive --format=zip --prefix=slipstick_zenodo_staging_2026-05-30/ \
+  --output ../slipstick_zenodo_staging_2026-05-30.zip HEAD
+unzip -t ../slipstick_zenodo_staging_2026-05-30.zip
 ```
 
 This archive path excludes ignored local deposition state, Python caches, and

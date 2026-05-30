@@ -1,36 +1,42 @@
 {
   "title": "Slip-Stick Dynamics in Butyl Pressure-Sensitive Adhesive-Silicone Release Liner Systems: Data and Analysis Code",
   "upload_type": "dataset",
-  "publication_date": "2026-05-28",
+  "publication_date": "2026-05-30",
   "version": "1.0.0",
   "doi": "10.5281/zenodo.20448892",
   "creators": [
     {
       "name": "Czakaj, Jakub",
+      "orcid": "0000-0002-2041-7810",
       "affiliation": "Almara sp. z o.o. sp.k.; Center for Advanced Technologies, Adam Mickiewicz University in Poznan"
     },
     {
       "name": "Kądzielawa, Edyta",
+      "orcid": "0009-0001-7593-3871",
       "affiliation": "Almara sp. z o.o. sp.k.; Faculty of Infrastructure and Environment, Czestochowa University of Technology"
     },
     {
       "name": "Sztorch, Bogna",
+      "orcid": "0000-0001-5166-8391",
       "affiliation": "Center for Advanced Technologies, Adam Mickiewicz University in Poznan"
     },
     {
       "name": "Głowacka, Julia",
+      "orcid": "0000-0003-1082-6714",
       "affiliation": "Center for Advanced Technologies, Adam Mickiewicz University in Poznan"
     },
     {
       "name": "Frydrych, Miłosz",
+      "orcid": "0000-0003-4196-5522",
       "affiliation": "Center for Advanced Technologies, Adam Mickiewicz University in Poznan"
     },
     {
       "name": "Przekop, Robert E.",
+      "orcid": "0000-0002-7355-5803",
       "affiliation": "Center for Advanced Technologies, Adam Mickiewicz University in Poznan"
     }
   ],
-  "description": "Modified FINAT FTM 10-type 180 degree release-liner peel datasets, processed source values for material-property and water-contact-angle tables, analysis code, locked-environment requirements, a passing verification report, and regenerated manuscript tables and figures for a study of slip-stick dynamics in butyl pressure-sensitive adhesive and silicone release-liner systems. Data, generated outputs, documentation, and metadata are released under CC BY 4.0; software code is released under the MIT License.",
+  "description": "Modified FINAT FTM 10-type 180 degree release-liner peel datasets, processed source values for material-property and water-contact-angle tables, analysis code, locked-environment requirements, a passing verification report, and regenerated manuscript tables and figures for a study of slip-stick dynamics in butyl pressure-sensitive adhesive and silicone release-liner systems. Data, generated outputs, documentation, and metadata are released under CC BY 4.0; software code is released under the MIT License. Funding: This work was funded by the Minister of Education and Science (Poland) under the “Doktorat wdrożeniowy” programme (6th edition; Implementation Doctorate Programme), grant number DWD/6/0325/2022, implemented in cooperation with Almara sp. z o.o. sp.k. as the industrial partner.",
   "access_right": "open",
   "license": "cc-by-4.0",
   "keywords": [

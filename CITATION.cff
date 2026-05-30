@@ -2,26 +2,32 @@ cff-version: 1.2.0
 message: "If you use this archive in your research, please cite it as below."
 title: "Slip-Stick Dynamics in Butyl Pressure-Sensitive Adhesive-Silicone Release Liner Systems: Data and Analysis Code"
 version: 1.0.0
-date-released: 2026-05-28
+date-released: 2026-05-30
 doi: 10.5281/zenodo.20448892
 authors:
   - family-names: "Czakaj"
     given-names: "Jakub"
+    orcid: "https://orcid.org/0000-0002-2041-7810"
     affiliation: "Almara sp. z o.o. sp.k.; Center for Advanced Technologies, Adam Mickiewicz University in Poznan"
   - family-names: "Kądzielawa"
     given-names: "Edyta"
+    orcid: "https://orcid.org/0009-0001-7593-3871"
     affiliation: "Almara sp. z o.o. sp.k.; Faculty of Infrastructure and Environment, Czestochowa University of Technology"
   - family-names: "Sztorch"
     given-names: "Bogna"
+    orcid: "https://orcid.org/0000-0001-5166-8391"
     affiliation: "Center for Advanced Technologies, Adam Mickiewicz University in Poznan"
   - family-names: "Głowacka"
     given-names: "Julia"
+    orcid: "https://orcid.org/0000-0003-1082-6714"
     affiliation: "Center for Advanced Technologies, Adam Mickiewicz University in Poznan"
   - family-names: "Frydrych"
     given-names: "Miłosz"
+    orcid: "https://orcid.org/0000-0003-4196-5522"
     affiliation: "Center for Advanced Technologies, Adam Mickiewicz University in Poznan"
   - family-names: "Przekop"
     given-names: "Robert E."
+    orcid: "https://orcid.org/0000-0002-7355-5803"
     affiliation: "Center for Advanced Technologies, Adam Mickiewicz University in Poznan"
 abstract: >-
   Data and analysis code for a manuscript on slip-stick dynamics in butyl

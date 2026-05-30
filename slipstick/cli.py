@@ -633,8 +633,9 @@ def _build_parser() -> argparse.ArgumentParser:
         type=float,
         default=90.0,
         help=(
-            "Sample width in millimetres. Forces from the CSV are assumed to be normalised to 90 mm; "
-            "the script rescales them linearly to this width for reporting and plotting."
+            "Collection specimen width in millimetres represented by the CSV force values "
+            "(default 90 mm). Forces are rescaled from this width to --report-width-mm "
+            "for summaries and plots."
         ),
     )
     parser.add_argument(

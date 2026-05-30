@@ -1,7 +1,7 @@
 verification_report_2026-05-29.txt
 
 Archive: slip_stick
-Generated: 2026-05-29
+Generated: 2026-05-30
 
 Environment:
 Python 3.14.4
@@ -14,9 +14,10 @@ python scripts/verify_publication_outputs.py
 
 Result:
 Analysed 42 configurations and 424 traces
-Tables: /tmp/slipstick_verify_vudjfzfg/tables
-Data: /tmp/slipstick_verify_vudjfzfg/data
+Tables: /tmp/slipstick_verify_ji2gz4iy/tables
+Data: /tmp/slipstick_verify_ji2gz4iy/data
 Figures skipped (--tables-only)
+Wrote /tmp/slipstick_verify_ji2gz4iy/source_data/table2_water_contact_angle.csv
 Publication output verification passed.
 Checked files:
 - data/configuration_summary.csv
@@ -33,6 +34,7 @@ Checked files:
 - tables/release_force_table.md
 - tables/release_force_table_numeric.csv
 - tables/threshold_sensitivity_supplement.md
+- source_data/table2_water_contact_angle.csv
 Sentinel values:
 - Rossella/C1E outer peak_count_1p4cN_mean = 4.300000
 - Rossella/C1E outer peak_count_1p4cN_sum = 43

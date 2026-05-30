@@ -8,8 +8,8 @@ non-force-displacement tables reported in the manuscript.
 - `table2_water_contact_angle.csv` reproduces the static water contact-angle
   values reported in manuscript Table 2.
 - `table2_water_contact_angle_gonio_raw.csv` contains the five individual
-  contact-angle measurements per manuscript sample extracted from `gonio.xls`
-  and canonicalized to the sample names used in the paper.
+  contact-angle measurements per manuscript sample exported from the goniometer
+  workbook and canonicalized to the sample names used in the paper.
 
 These files are processed summary/source values and canonicalized exports, not
 raw instrument-project files. The force-displacement raw CSV datasets used for
@@ -33,7 +33,14 @@ each sample. Following the predefined processing rule used for the reported
 table, the two extreme values were discarded and the table reports the mean and
 sample standard deviation of the three central values. The individual
 measurements used for this calculation are provided in
-`table2_water_contact_angle_gonio_raw.csv`. Source workbook names that match the
+`table2_water_contact_angle_gonio_raw.csv`. Regenerate the processed Table 2
+summary with:
+
+```bash
+python scripts/generate_table2_water_contact_angle.py
+```
+
+Source workbook names that match the
 manuscript samples exactly are retained in `source_sample_name`; additional
 non-manuscript workbook entries were not included because they do not support
 the reported paper tables.

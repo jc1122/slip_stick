@@ -20,7 +20,9 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 GENERATOR = REPO_ROOT / "scripts" / "generate_publication_outputs.py"
+TABLE2_GENERATOR = REPO_ROOT / "scripts" / "generate_table2_water_contact_angle.py"
 EXPECTED_ROOT = REPO_ROOT / "publication" / "generated"
+EXPECTED_SOURCE_ROOT = REPO_ROOT / "publication" / "source_data"
 EXPECTED_PYTHON = (3, 14, 4)
 EXPECTED_PACKAGES = {
     "numpy": "2.4.6",
@@ -43,6 +45,10 @@ COMPARE_FILES = [
     "tables/release_force_table.md",
     "tables/release_force_table_numeric.csv",
     "tables/threshold_sensitivity_supplement.md",
+]
+
+SOURCE_COMPARE_FILES = [
+    "table2_water_contact_angle.csv",
 ]
 
 
@@ -140,6 +146,19 @@ def main() -> int:
             cwd=REPO_ROOT,
             check=True,
         )
+        regenerated_source = temp_dir / "source_data"
+        subprocess.run(
+            [
+                sys.executable,
+                str(TABLE2_GENERATOR),
+                "--raw",
+                str(EXPECTED_SOURCE_ROOT / "table2_water_contact_angle_gonio_raw.csv"),
+                "--output",
+                str(regenerated_source / "table2_water_contact_angle.csv"),
+            ],
+            cwd=REPO_ROOT,
+            check=True,
+        )
 
         failures: list[str] = []
         for relative in COMPARE_FILES:
@@ -153,6 +172,17 @@ def main() -> int:
                 continue
             if not filecmp.cmp(expected, regenerated, shallow=False):
                 failures.append(f"content differs: {relative}")
+        for relative in SOURCE_COMPARE_FILES:
+            expected = EXPECTED_SOURCE_ROOT / relative
+            regenerated = regenerated_source / relative
+            if not expected.exists():
+                failures.append(f"missing expected source file: {relative}")
+                continue
+            if not regenerated.exists():
+                failures.append(f"missing regenerated source file: {relative}")
+                continue
+            if not filecmp.cmp(expected, regenerated, shallow=False):
+                failures.append(f"source content differs: {relative}")
 
         config_row = read_config_row(
             temp_dir / "data" / "configuration_summary.csv",
@@ -186,6 +216,8 @@ def main() -> int:
         print("Checked files:")
         for relative in COMPARE_FILES:
             print(f"- {relative}")
+        for relative in SOURCE_COMPARE_FILES:
+            print(f"- source_data/{relative}")
         print("Sentinel values:")
         print("- Rossella/C1E outer peak_count_1p4cN_mean = 4.300000")
         print("- Rossella/C1E outer peak_count_1p4cN_sum = 43")

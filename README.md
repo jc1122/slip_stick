@@ -130,13 +130,21 @@ Inputs:
   and 2, covering material-property and water-contact-angle values that are not
   derived from the force-displacement CSV datasets. Table 1 is a processed
   summary from non-public Almara production/QC records; Table 2 includes the
-  five canonicalized contact-angle measurements extracted from `gonio.xls`.
+  five canonicalized contact-angle measurements exported from the goniometer
+  workbook.
 
 Outputs are written under `publication/generated/`, including the release-force
 table, replicate-level metrics, configuration summaries, warnings, main data
 figures, supplementary release-curve figures, figure manifests, and captions. See
 `docs/PUBLICATION_OUTPUTS.md` for the exact calculation rules and inclusion
 decisions.
+
+Regenerate the processed manuscript Table 2 contact-angle source summary from
+the replicate-level source CSV with:
+
+```bash
+python scripts/generate_table2_water_contact_angle.py
+```
 
 ## Scientific context
 
@@ -461,10 +469,12 @@ python scripts/verify_publication_outputs.py
 ```
 
 The script regenerates the tabular publication outputs in a temporary directory
-and compares them with the archived files. It first checks the submitted-output
-environment lock and then checks sentinel values that were sensitive in reviewer
-testing: Rossella/C1E outer mean peak count = 4.300000, Rossella/C1E outer
-peak-count sum = 43, and the 1.4 cN/25 mm threshold total peak count = 904.
+and compares them with the archived files. It also regenerates the processed
+Table 2 water-contact-angle summary from the replicate-level source CSV. It
+first checks the submitted-output environment lock and then checks sentinel
+values that were sensitive in reviewer testing: Rossella/C1E outer mean peak
+count = 4.300000, Rossella/C1E outer peak-count sum = 43, and the 1.4 cN/25 mm
+threshold total peak count = 904.
 The file `verification_report_2026-05-29.txt` records a passing run in the
 locked environment.
 

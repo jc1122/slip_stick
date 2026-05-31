@@ -41,6 +41,7 @@ This writes:
 - `publication/generated/data/top_peak_configs.csv`
 - `publication/generated/data/threshold_robustness_summary.json`
 - `publication/generated/data/warnings.csv`
+- `publication/generated/data/window_sensitivity.csv`
 - `publication/generated/tables/release_force_table.md`
 - `publication/generated/tables/release_force_table.csv`
 - `publication/generated/tables/release_force_table_numeric.csv`
@@ -49,6 +50,7 @@ This writes:
 - `publication/generated/tables/force_ratio_inner_outer_table_numeric.csv`
 - `publication/generated/tables/threshold_sensitivity_supplement.md`
 - `publication/generated/tables/threshold_sensitivity_supplement.docx`
+- `publication/generated/tables/window_sensitivity_supplement.md`
 - `publication/generated/figures/main/png/figure2_release_force_heatmap.png`
 - `publication/generated/figures/main/png/figure5_residual_profiles.png`
 - `publication/generated/figures/main/png/figure8_peak_count_heatmap.png`
@@ -90,9 +92,14 @@ and DOCX containers are not byte-compared by this verifier. Use the included
 
 - Force values are rescaled from 90 mm collection width to 25 mm report width.
 - Release force is reported in cN/25 mm.
-- The release-force table uses each replicate's mean force over 50-200 mm and
-  reports values as mean ± sample SD with the valid replicate count in each
-  cell.
+- The release-force table uses each replicate's mean force over the available
+  portion of the 50-200 mm window and reports values as mean ± sample SD with
+  the valid replicate count in each cell. Traces that fail early span only part
+  of the window; they are kept as physically meaningful early failures.
+- `window_sensitivity.csv` and `window_sensitivity_supplement.md` recompute the
+  configuration means using only traces that cover the full 50-200 mm window
+  (to within 0.5 mm) and report the difference. They are a sensitivity check on
+  the partial-window traces, not a separate release-force statistic.
 - Configuration values are the mean and sample SD of those replicate means.
 - Slip-stick peak counts use the same 50-200 mm window and the default
   1.4 cN/25 mm residual threshold. A count is one contiguous positive residual

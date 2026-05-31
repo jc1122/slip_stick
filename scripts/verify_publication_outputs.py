@@ -38,6 +38,7 @@ COMPARE_FILES = [
     "data/threshold_robustness_summary.json",
     "data/top_peak_configs.csv",
     "data/warnings.csv",
+    "data/window_sensitivity.csv",
     "tables/force_ratio_inner_outer_table.csv",
     "tables/force_ratio_inner_outer_table.md",
     "tables/force_ratio_inner_outer_table_numeric.csv",

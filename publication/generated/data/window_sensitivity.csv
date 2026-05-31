@@ -1,0 +1,43 @@
+figure,liner,liner_label,sealant,side,side_label,n_all,mean_all_cN_25mm,sd_all_cN_25mm,n_full_window,mean_full_window_cN_25mm,sd_full_window_cN_25mm,n_partial_window,disp_min_mm,disp_max_mm,coverage_tolerance_mm
+1,dolpap,Dolpap,C1E,external,outer,10,4.869356,0.230006,10,4.869356,0.230006,0,50.0,200.0,0.5
+1,dolpap,Dolpap,C1E,internal,inner,10,5.033661,0.156575,10,5.033661,0.156575,0,50.0,200.0,0.5
+2,dolpap,Dolpap,U2E,external,outer,10,8.380429,1.387209,10,8.380429,1.387209,0,50.0,200.0,0.5
+2,dolpap,Dolpap,U2E,internal,inner,10,7.926349,0.728844,10,7.926349,0.728844,0,50.0,200.0,0.5
+3,dolpap,Dolpap,T1E,external,outer,10,5.372958,0.266092,9,5.370491,0.282112,1,50.0,200.0,0.5
+3,dolpap,Dolpap,T1E,internal,inner,10,6.012038,0.747148,7,6.253402,0.591761,3,50.0,200.0,0.5
+4,dolpap,Dolpap,T2E,external,outer,10,6.997192,0.337692,10,6.997192,0.337692,0,50.0,200.0,0.5
+4,dolpap,Dolpap,T2E,internal,inner,10,7.042857,0.722838,10,7.042857,0.722838,0,50.0,200.0,0.5
+5,dolpap,Dolpap,C1EN,external,outer,10,7.477067,0.471688,10,7.477067,0.471688,0,50.0,200.0,0.5
+5,dolpap,Dolpap,C1EN,internal,inner,10,6.550350,1.272429,9,6.516041,1.344700,1,50.0,200.0,0.5
+6,dolpap,Dolpap,T1EN,external,outer,10,8.354726,0.878030,10,8.354726,0.878030,0,50.0,200.0,0.5
+6,dolpap,Dolpap,T1EN,internal,inner,10,7.210816,1.281480,10,7.210816,1.281480,0,50.0,200.0,0.5
+7,dolpap,Dolpap,T2EN,external,outer,10,7.620482,0.902050,10,7.620482,0.902050,0,50.0,200.0,0.5
+7,dolpap,Dolpap,T2EN,internal,inner,9,7.247910,0.531559,9,7.247910,0.531559,0,50.0,200.0,0.5
+8,rossella,Rossella,C1E,external,outer,10,12.478882,1.559123,10,12.478882,1.559123,0,50.0,200.0,0.5
+8,rossella,Rossella,C1E,internal,inner,5,10.547502,0.536058,5,10.547502,0.536058,0,50.0,200.0,0.5
+9,rossella,Rossella,U2E,external,outer,10,238.440515,73.869760,4,173.382036,51.309456,6,50.0,200.0,0.5
+9,rossella,Rossella,U2E,internal,inner,10,10.045937,0.283603,10,10.045937,0.283603,0,50.0,200.0,0.5
+10,rossella,Rossella,T1E,external,outer,10,9.385515,0.532381,10,9.385515,0.532381,0,50.0,200.0,0.5
+10,rossella,Rossella,T1E,internal,inner,10,8.976990,0.832287,10,8.976990,0.832287,0,50.0,200.0,0.5
+11,rossella,Rossella,T2E,external,outer,10,10.490578,0.813143,10,10.490578,0.813143,0,50.0,200.0,0.5
+11,rossella,Rossella,T2E,internal,inner,10,10.778992,1.526533,10,10.778992,1.526533,0,50.0,200.0,0.5
+12,rossella,Rossella,C1EN,external,outer,10,11.705608,1.567323,10,11.705608,1.567323,0,50.0,200.0,0.5
+12,rossella,Rossella,C1EN,internal,inner,10,15.027693,3.208866,10,15.027693,3.208866,0,50.0,200.0,0.5
+13,rossella,Rossella,T1EN,external,outer,10,25.924935,9.258342,10,25.924935,9.258342,0,50.0,200.0,0.5
+13,rossella,Rossella,T1EN,internal,inner,10,16.449651,4.783740,10,16.449651,4.783740,0,50.0,200.0,0.5
+14,rossella,Rossella,T2EN,external,outer,10,11.644244,0.647774,10,11.644244,0.647774,0,50.0,200.0,0.5
+14,rossella,Rossella,T2EN,internal,inner,10,12.869178,2.129240,10,12.869178,2.129240,0,50.0,200.0,0.5
+15,crosil42,Crosil 42,C1E,external,outer,11,6.365608,0.630049,9,6.375491,0.647886,2,50.0,200.0,0.5
+15,crosil42,Crosil 42,C1E,internal,inner,10,3.867234,1.184819,10,3.867234,1.184819,0,50.0,200.0,0.5
+16,crosil42,Crosil 42,U2E,external,outer,10,17.827953,15.557659,10,17.827953,15.557659,0,50.0,200.0,0.5
+16,crosil42,Crosil 42,U2E,internal,inner,10,11.608821,1.433090,10,11.608821,1.433090,0,50.0,200.0,0.5
+17,crosil42,Crosil 42,T1E,external,outer,10,5.338727,0.539089,9,5.266341,0.517684,1,50.0,200.0,0.5
+17,crosil42,Crosil 42,T1E,internal,inner,10,4.323833,0.670416,10,4.323833,0.670416,0,50.0,200.0,0.5
+18,crosil42,Crosil 42,T2E,external,outer,11,8.323313,1.169585,8,8.612306,0.873044,3,50.0,200.0,0.5
+18,crosil42,Crosil 42,T2E,internal,inner,10,4.569242,0.494255,10,4.569242,0.494255,0,50.0,200.0,0.5
+19,crosil42,Crosil 42,C1EN,external,outer,10,6.444595,0.809547,10,6.444595,0.809547,0,50.0,200.0,0.5
+19,crosil42,Crosil 42,C1EN,internal,inner,10,7.976518,2.318489,10,7.976518,2.318489,0,50.0,200.0,0.5
+20,crosil42,Crosil 42,T1EN,external,outer,10,8.449285,0.735354,10,8.449285,0.735354,0,50.0,200.0,0.5
+20,crosil42,Crosil 42,T1EN,internal,inner,10,10.837636,1.470708,10,10.837636,1.470708,0,50.0,200.0,0.5
+21,crosil42,Crosil 42,T2EN,external,outer,10,8.287777,0.822627,10,8.287777,0.822627,0,50.0,200.0,0.5
+21,crosil42,Crosil 42,T2EN,internal,inner,10,8.555909,0.452762,10,8.555909,0.452762,0,50.0,200.0,0.5

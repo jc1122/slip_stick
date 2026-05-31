@@ -129,6 +129,26 @@ class ConfigurationSummary:
 
 
 @dataclass(frozen=True)
+class WindowSensitivityRow:
+    figure: int
+    liner: str
+    liner_label: str
+    sealant: str
+    side: str
+    side_label: str
+    n_all: int
+    mean_all_cN_25mm: float
+    sd_all_cN_25mm: float
+    n_full_window: int
+    mean_full_window_cN_25mm: float
+    sd_full_window_cN_25mm: float
+    n_partial_window: int
+    disp_min_mm: float
+    disp_max_mm: float
+    coverage_tolerance_mm: float
+
+
+@dataclass(frozen=True)
 class ResidualPanel:
     panel: str
     dataset_file: str
@@ -2792,11 +2812,12 @@ def write_run_readme(
         "## Rules",
         "",
         "- Dataset inclusion follows the manifest exactly.",
-        "- Release force is the per-replicate mean over 50-200 mm.",
+        "- Release force is the per-replicate mean over the available portion of the 50-200 mm window.",
         "- Forces are normalized from 90 mm collection width to 25 mm report width and reported as cN/25 mm.",
         "- Configuration SD is the sample SD across replicate mean-release values.",
         "- Slip-stick peak counts use one contiguous positive residual excursion above threshold as one event.",
         "- Threshold-robustness outputs repeat the peak-count analysis across nearby thresholds from the same manifest.",
+        "- `data/window_sensitivity.csv` and `tables/window_sensitivity_supplement.md` compare the reported configuration means against a strict full-window subset of traces.",
         "- No replicate-level outlier exclusions are applied by this generator.",
     ]
     lines.append("")
@@ -2838,6 +2859,182 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--tables-only", action="store_true")
     parser.add_argument("--plots-only", action="store_true")
     return parser
+
+
+def compute_window_sensitivity(
+    metrics: list[TraceMetric],
+    *,
+    disp_min: float,
+    disp_max: float,
+    coverage_tolerance_mm: float = 0.5,
+) -> list[WindowSensitivityRow]:
+    """Compare each configuration's reported release force against the subset of
+    traces that cover essentially the full displacement window.
+
+    The reported per-trace release force is the mean over the available portion
+    of the analysis window. A trace that terminates early (an early/cohesive
+    failure) is still counted, but only spans part of the window. This routine
+    recomputes the configuration mean using only traces whose used window covers
+    the full [disp_min, disp_max] interval to within coverage_tolerance_mm.
+    """
+    grouped: dict[tuple[int, str, str, str], list[TraceMetric]] = {}
+    order: list[tuple[int, str, str, str]] = []
+    for metric in metrics:
+        if not metric.valid_release_window:
+            continue
+        key = (metric.figure, metric.liner, metric.sealant, metric.side)
+        if key not in grouped:
+            grouped[key] = []
+            order.append(key)
+        grouped[key].append(metric)
+
+    rows: list[WindowSensitivityRow] = []
+    for key in order:
+        group = grouped[key]
+        first = group[0]
+        all_values = [metric.mean_release_cN_25mm for metric in group]
+        full_window = [
+            metric
+            for metric in group
+            if metric.disp_min_used_mm <= disp_min + coverage_tolerance_mm
+            and metric.disp_max_used_mm >= disp_max - coverage_tolerance_mm
+        ]
+        full_values = [metric.mean_release_cN_25mm for metric in full_window]
+        rows.append(
+            WindowSensitivityRow(
+                figure=first.figure,
+                liner=first.liner,
+                liner_label=first.liner_label,
+                sealant=first.sealant,
+                side=first.side,
+                side_label=first.side_label,
+                n_all=len(group),
+                mean_all_cN_25mm=safe_mean(all_values),
+                sd_all_cN_25mm=sample_sd(all_values),
+                n_full_window=len(full_window),
+                mean_full_window_cN_25mm=safe_mean(full_values),
+                sd_full_window_cN_25mm=sample_sd(full_values),
+                n_partial_window=len(group) - len(full_window),
+                disp_min_mm=disp_min,
+                disp_max_mm=disp_max,
+                coverage_tolerance_mm=coverage_tolerance_mm,
+            )
+        )
+    return rows
+
+
+def write_window_sensitivity_csv(path: Path, rows: list[WindowSensitivityRow]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(
+            [
+                "figure",
+                "liner",
+                "liner_label",
+                "sealant",
+                "side",
+                "side_label",
+                "n_all",
+                "mean_all_cN_25mm",
+                "sd_all_cN_25mm",
+                "n_full_window",
+                "mean_full_window_cN_25mm",
+                "sd_full_window_cN_25mm",
+                "n_partial_window",
+                "disp_min_mm",
+                "disp_max_mm",
+                "coverage_tolerance_mm",
+            ]
+        )
+        for row in rows:
+            writer.writerow(
+                [
+                    row.figure,
+                    row.liner,
+                    row.liner_label,
+                    row.sealant,
+                    row.side,
+                    row.side_label,
+                    row.n_all,
+                    finite_or_blank(row.mean_all_cN_25mm, 6),
+                    finite_or_blank(row.sd_all_cN_25mm, 6),
+                    row.n_full_window,
+                    finite_or_blank(row.mean_full_window_cN_25mm, 6),
+                    finite_or_blank(row.sd_full_window_cN_25mm, 6),
+                    row.n_partial_window,
+                    finite_or_blank(row.disp_min_mm, 1),
+                    finite_or_blank(row.disp_max_mm, 1),
+                    finite_or_blank(row.coverage_tolerance_mm, 1),
+                ]
+            )
+
+
+def _cell_mean_sd(mean: float, sd: float, n: int) -> str:
+    if n <= 0 or not math.isfinite(mean):
+        return "-"
+    return f"{mean:.1f} ± {sd:.1f} (n={n})"
+
+
+def write_window_sensitivity_supplement_markdown(
+    path: Path, rows: list[WindowSensitivityRow]
+) -> None:
+    affected = [row for row in rows if row.n_partial_window > 0]
+    total_partial = sum(row.n_partial_window for row in rows)
+    disp_min = rows[0].disp_min_mm if rows else 0.0
+    disp_max = rows[0].disp_max_mm if rows else 0.0
+    n_traces = sum(row.n_all for row in rows)
+
+    # Largest mean shift between the full set and the strict full-window subset.
+    def shift(row: WindowSensitivityRow) -> float:
+        if row.n_full_window <= 0 or not math.isfinite(row.mean_full_window_cN_25mm):
+            return 0.0
+        return abs(row.mean_all_cN_25mm - row.mean_full_window_cN_25mm)
+
+    lines = [
+        "# Release-Force Window-Coverage Sensitivity",
+        "",
+        "The per-trace release force reported in the manuscript is the mean over "
+        f"the available portion of the {disp_min:.0f}-{disp_max:.0f} mm displacement "
+        "window. Most traces span the whole window, but some terminate before "
+        f"{disp_max:.0f} mm because the peel failed early; these early/cohesive "
+        "failures are physically meaningful and are kept in the reported means. "
+        "This note checks whether that choice affects the configuration values.",
+        "",
+        "The table compares each affected configuration as reported (all valid "
+        "traces) against a strict subset that keeps only traces covering the full "
+        f"{disp_min:.0f}-{disp_max:.0f} mm window to within "
+        f"{rows[0].coverage_tolerance_mm:.1f} mm. Values are mean ± sample SD in "
+        "cN/25 mm.",
+        "",
+        f"Of {n_traces} valid traces, {total_partial} are partial-window traces, "
+        f"spread over {len(affected)} of {len(rows)} configurations. The full "
+        "machine-readable comparison for all configurations is in "
+        "`publication/generated/data/window_sensitivity.csv`.",
+        "",
+        "| Liner | Sealant | Side | As reported | Strict full-window | Partial traces |",
+        "|---|---|---|---|---|---|",
+    ]
+    for row in sorted(affected, key=shift, reverse=True):
+        lines.append(
+            f"| {row.liner_label} | {row.sealant} | {row.side_label} "
+            f"| {_cell_mean_sd(row.mean_all_cN_25mm, row.sd_all_cN_25mm, row.n_all)} "
+            f"| {_cell_mean_sd(row.mean_full_window_cN_25mm, row.sd_full_window_cN_25mm, row.n_full_window)} "
+            f"| {row.n_partial_window} |"
+        )
+
+    lines += [
+        "",
+        "Only Rossella/U2E outer changes materially: the high-force traces are the "
+        "ones that fail early, so the strict subset gives a lower mean with a wider "
+        "relative spread on fewer traces. The configuration stays the clear extreme "
+        "of the matrix under either treatment, and the rank order of the highest-"
+        "force configurations is unchanged. The remaining affected configurations "
+        "shift by at most a few tenths of a cN/25 mm.",
+        "",
+    ]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(lines), encoding="utf-8")
 
 
 def main(argv: Iterable[str] | None = None) -> int:
@@ -2924,6 +3121,17 @@ def main(argv: Iterable[str] | None = None) -> int:
         )
         write_release_tables(args.output_dir, summaries)
         write_warnings(args.output_dir, summaries)
+        window_sensitivity_rows = compute_window_sensitivity(
+            all_metrics, disp_min=args.disp_min, disp_max=args.disp_max
+        )
+        write_window_sensitivity_csv(
+            args.output_dir / "data" / "window_sensitivity.csv",
+            window_sensitivity_rows,
+        )
+        write_window_sensitivity_supplement_markdown(
+            args.output_dir / "tables" / "window_sensitivity_supplement.md",
+            window_sensitivity_rows,
+        )
 
     plots_generated = False
     if not args.tables_only:

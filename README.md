@@ -144,6 +144,23 @@ the replicate-level source CSV with:
 python scripts/generate_table2_water_contact_angle.py
 ```
 
+### Dataset notes
+
+The test design targeted ten replicate traces per liner-sealant-side
+configuration. Most exported CSV files contain ten traces, but a few contain
+nine, eleven, or twelve, reflecting the number of peel runs recorded for that
+specimen set (`20250521_T2EN_dolpap_internal.csv` has nine,
+`20250409_T2E_crosil42_external.csv` has eleven, and
+`20250318_C1E_rossella_external.csv` and `20250331_C1E_crosil42_external.csv`
+have twelve). The release-force and peak-count tables report the actual number
+of valid traces (n) for each configuration, so these counts are already
+accounted for.
+
+One file, `20250514_T1EN_crosil42_internal_dup1.csv`, carries a `_dup1` suffix.
+This is a naming artifact from file export only. Its contents are unique (they
+do not duplicate any other dataset), and it is the internal-side T1EN/Crosil 42
+dataset listed in `publication/dataset_manifest.csv`.
+
 ## Scientific context
 
 ### Background
@@ -457,7 +474,7 @@ first checks the submitted-output environment lock and then checks sentinel
 values that were sensitive in reviewer testing: Rossella/C1E outer mean peak
 count = 4.300000, Rossella/C1E outer peak-count sum = 43, and the 1.4 cN/25 mm
 threshold total peak count = 904.
-The file `verification_report_2026-05-29.txt` records a passing run in the
+The file `verification_report_2026-05-31.txt` records a passing run in the
 locked environment.
 
 ## Citation

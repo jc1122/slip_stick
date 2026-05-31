@@ -7,7 +7,10 @@ code, and generated publication outputs.
 ## Main Contents
 
 - `datasets/`: the 42 source CSV datasets from the modified FINAT FTM 10-type
-  180° peel integration tests used in the manuscript.
+  180° peel integration tests used in the manuscript. The design targeted ten
+  traces per configuration; a few files hold nine, eleven, or twelve, and the
+  tables report the actual valid n. The single `_dup1` filename is an export
+  naming artifact with unique content (see `README.md`, "Dataset notes").
 - `publication/dataset_manifest.csv`: canonical inclusion matrix for the
   manuscript release-force and slip-stick analyses.
 - `publication/source_data/`: processed source values for the
@@ -23,11 +26,12 @@ code, and generated publication outputs.
 - `scripts/verify_publication_outputs.py`: regeneration check for the archived
   tabular outputs, the processed Table 2 contact-angle summary, and sentinel
   spike-count values.
-- `verification_report_2026-05-29.txt`: passing verification report generated
+- `verification_report_2026-05-31.txt`: passing verification report generated
   in the exact Python 3.14.4 locked environment.
 - `publication/generated/`: regenerated tables, summary data, figure files,
-  captions, manifests, and threshold-sensitivity outputs used to support the
-  slip-stick detection method.
+  captions, manifests, threshold-sensitivity outputs, and the release-force
+  window-coverage sensitivity check (`data/window_sensitivity.csv`,
+  `tables/window_sensitivity_supplement.md`) used to support the manuscript.
 - `slipstick/`: analysis package used by the generator and CLI.
 - `LICENSE`: split license notice. Data, generated outputs, documentation, and
   metadata are CC BY 4.0; software code under `slipstick/` and `scripts/` is

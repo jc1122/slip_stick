@@ -1,7 +1,7 @@
-verification_report_2026-05-29.txt
+verification_report_2026-05-31.txt
 
-Archive: slip_stick/.worktrees/zenodo
-Generated: 2026-05-30
+Archive: slip_stick
+Generated: 2026-05-31
 
 Environment:
 Python 3.14.4
@@ -14,10 +14,10 @@ python scripts/verify_publication_outputs.py
 
 Result:
 Analysed 42 configurations and 424 traces
-Tables: /tmp/slipstick_verify_56sj890o/tables
-Data: /tmp/slipstick_verify_56sj890o/data
+Tables: /tmp/claude-1000/slipstick_verify_liut7f8w/tables
+Data: /tmp/claude-1000/slipstick_verify_liut7f8w/data
 Figures skipped (--tables-only)
-Wrote /tmp/slipstick_verify_56sj890o/source_data/table2_water_contact_angle.csv
+Wrote /tmp/claude-1000/slipstick_verify_liut7f8w/source_data/table2_water_contact_angle.csv
 Publication output verification passed.
 Checked files:
 - data/configuration_summary.csv
@@ -27,6 +27,7 @@ Checked files:
 - data/threshold_robustness_summary.json
 - data/top_peak_configs.csv
 - data/warnings.csv
+- data/window_sensitivity.csv
 - tables/force_ratio_inner_outer_table.csv
 - tables/force_ratio_inner_outer_table.md
 - tables/force_ratio_inner_outer_table_numeric.csv

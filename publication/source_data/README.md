@@ -28,11 +28,12 @@ n = 10, consistent with the 24 mm EN 1939 specimen width used for this
 characterization; the other quantitative parameters are reported as mean and
 sample standard deviation for n = 3.
 
-Table 2 provenance: static water contact angles were measured by sessile-drop
-assessment with distilled water at 23 deg C. Five measurements were acquired for
-each sample. Following the predefined processing rule used for the reported
-table, the two extreme values were discarded and the table reports the mean and
-sample standard deviation of the three central values. The individual
+Table 2 provenance: static water contact angles were measured by the sessile-drop
+technique with a Krüss DSA100 goniometer, using a 5 µL distilled-water drop at
+room temperature and atmospheric pressure (recorded at 23 deg C). Five
+measurements were acquired for each sample. Following the predefined processing
+rule used for the reported table, the two extreme values were discarded and the
+table reports the mean and sample standard deviation of the three central values. The individual
 measurements used for this calculation are provided in
 `table2_water_contact_angle_gonio_raw.csv`. Regenerate the processed Table 2
 summary with:
